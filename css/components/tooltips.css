@@ -20,7 +20,7 @@
     font-family: 'Inter', sans-serif;
     font-size: 12px;
     line-height: 1.5;
-    pointer-events: none;
+    pointer-events: auto;
     opacity: 0;
     transform: translateY(10px) scale(0.98);
     transition: 
@@ -29,6 +29,42 @@
     white-space: normal;
     max-width: 400px;
     min-width: 280px;
+    max-height: 60vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.custom-tooltip::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-tooltip::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-tooltip::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+@media (max-width: 768px) {
+    .custom-tooltip {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: 90vw;
+        max-width: 360px;
+        min-width: 280px;
+        max-height: 70vh;
+        z-index: 2000;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+    }
+    
+    .custom-tooltip.visible {
+        transform: translate(-50%, -50%) scale(1) !important;
+    }
 }
 
 .custom-tooltip.visible {

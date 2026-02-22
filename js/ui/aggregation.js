@@ -602,48 +602,84 @@ document.addEventListener('mouseover', (e) => {
 
             const rect = target.getBoundingClientRect();
             
-            // Initial positioning off-screen to measure
-            tooltipEl.style.visibility = 'hidden';
-            tooltipEl.style.top = '0px';
-            tooltipEl.style.left = '0px';
+            // Check if mobile
+            const isMobile = window.innerWidth <= 768;
             
-            requestAnimationFrame(() => {
-                const tooltipRect = tooltipEl.getBoundingClientRect();
+            if (!isMobile) {
+                // Initial positioning off-screen to measure
+                tooltipEl.style.visibility = 'hidden';
+                tooltipEl.style.top = '0px';
+                tooltipEl.style.left = '0px';
                 
-                let top = rect.bottom + 10;
-                let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+                requestAnimationFrame(() => {
+                    const tooltipRect = tooltipEl.getBoundingClientRect();
+                    
+                    let top = rect.bottom + 10;
+                    let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
 
-                // Boundary checks
-                if (left < 10) left = 10;
-                if (left + tooltipRect.width > window.innerWidth - 10) left = window.innerWidth - tooltipRect.width - 10;
-                
-                // Flip to top if not enough space below
-                if (top + tooltipRect.height > window.innerHeight - 10) {
-                    top = rect.top - tooltipRect.height - 10;
+                    // Boundary checks
+                    if (left < 10) left = 10;
+                    if (left + tooltipRect.width > window.innerWidth - 10) left = window.innerWidth - tooltipRect.width - 10;
+                    
+                    // Flip to top if not enough space below
+                    if (top + tooltipRect.height > window.innerHeight - 10) {
+                        top = rect.top - tooltipRect.height - 10;
+                    }
+
+                    tooltipEl.style.top = `${top}px`;
+                    tooltipEl.style.left = `${left}px`;
+                    tooltipEl.style.visibility = 'visible';
+
+                    // Trigger animation
+                    requestAnimationFrame(() => tooltipEl.classList.add('visible'));
+                });
+            } else {
+                 // Mobile: let CSS handle positioning (centered)
+                 requestAnimationFrame(() => tooltipEl.classList.add('visible'));
+            }
+
+            // Cleanup function
+            const cleanup = (e) => {
+                // If moving between target and tooltip, don't close
+                if (e && e.relatedTarget) {
+                    const rel = e.relatedTarget;
+                    if (rel === tooltipEl || tooltipEl.contains(rel)) return;
+                    if (rel === target || target.contains(rel)) return;
                 }
-
-                tooltipEl.style.top = `${top}px`;
-                tooltipEl.style.left = `${left}px`;
-                tooltipEl.style.visibility = 'visible';
-
-                // Trigger animation
-                requestAnimationFrame(() => tooltipEl.classList.add('visible'));
-            });
-
-            // Cleanup on mouseleave (safer than mouseout to avoid flickering on children)
-            const cleanup = () => {
+                
+                // Close tooltip
                 tooltipEl.classList.remove('visible');
                 target.dataset.tooltipActive = 'false';
+                
+                // Remove listeners
+                target.removeEventListener('mouseleave', cleanup);
+                tooltipEl.removeEventListener('mouseleave', cleanup);
+                document.removeEventListener('touchstart', handleOutsideClick);
+                document.removeEventListener('click', handleOutsideClick);
                 
                 setTimeout(() => {
                     if (tooltipEl.parentNode) {
                         tooltipEl.remove();
                     }
                 }, 200);
-                
-                target.removeEventListener('mouseleave', cleanup);
             };
+            
+            const handleOutsideClick = (e) => {
+                // If clicking inside tooltip or target, don't close
+                if (tooltipEl.contains(e.target) || target.contains(e.target)) return;
+                cleanup();
+            };
+
             target.addEventListener('mouseleave', cleanup);
+            tooltipEl.addEventListener('mouseleave', cleanup);
+            
+            // Handle clicks outside (for mobile/desktop interaction)
+            // Use capture=true for touchstart to catch it early? No, bubbling is fine.
+            // Using setTimeout to avoid immediate trigger if the event that opened it propagates
+            setTimeout(() => {
+                document.addEventListener('touchstart', handleOutsideClick, { passive: true });
+                document.addEventListener('click', handleOutsideClick);
+            }, 50);
 
         } catch (err) {
             console.error('Error parsing tooltip data:', err, tooltipDataStr);
