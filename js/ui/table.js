@@ -25,11 +25,12 @@ import { renderAggregationTable } from './aggregation.js';
 const filterCache = new Cache(5000);
 
 // Debounced render function to reduce DOM updates
-const debouncedRenderTable = debounce(_renderTableInternal, 300);
+const debouncedRenderTable = debounce(() => {
+    _renderTableInternal();
+}, 300);
 
 // Virtual scroll instance
 let virtualScrollManager = null;
-let lastRenderedColumnOrder = null;
 
 // Initialize Web Worker
 let dataWorker = null;
@@ -526,15 +527,6 @@ function _renderTableInternal() {
             ${columnOrder.filter(Key => filteredCells[Key] !== undefined).map(Key => filteredCells[Key]).join('')}
         </tr>`;
         };
-
-        // Check if column order changed since last render
-        if (virtualScrollManager && lastRenderedColumnOrder && JSON.stringify(lastRenderedColumnOrder) !== JSON.stringify(columnOrder)) {
-            // Force recreation of internal virtual scroll instance to ensure clean render
-            if (typeof virtualScrollManager.destroy === 'function') {
-                virtualScrollManager.destroy();
-            }
-        }
-        lastRenderedColumnOrder = [...columnOrder];
 
         // Render using virtual scroll or traditional method
         // Override row renderer and update data

@@ -23,10 +23,10 @@ import {
     getColumnOrder, getVisibleColumns, setPriceUpdateInterval, setActiveCurrency,
     setActiveEntryCurrency, setDecimalPlaces, setFontSize, setFontSizeKnown, setLeverageColors, setGridSpacing, setMinBtcVolume, getMinBtcVolume, setAggInterval, setAggTableHeight, setAggVolumeUnit, getAggVolumeUnit, setIsZenMode, getIsZenMode,
     setShowAggSymbols, getShowAggSymbols, setAggZoneColors, getAggZoneColors, setAggHighlightColor, getAggHighlightColor, setTooltipDelay,
-    getColumnWidths, setColumnWidths, setRowHeight, setAggColumnOrder, setAggColumnWidths
+    getColumnWidths, setColumnWidths, setRowHeight
 } from '../state.js';
-import { COLUMN_DEFS, AGG_COLUMN_DEFS } from '../config.js';
-import { renderTable, renderTableImmediate, updateStats } from '../ui/table.js';
+import { COLUMN_DEFS } from '../config.js';
+import { renderTable, updateStats } from '../ui/table.js';
 import { renderAggregationTable, scrollToCurrentPriceRange as aggScrollToRange } from '../ui/aggregation.js';
 import { renderQuotesPanel, updateRankingPanel } from '../ui/panels.js';
 import { saveSettings } from '../storage/settings.js';
@@ -34,47 +34,13 @@ import { startPriceTicker, stopPriceTicker } from '../ui/panels.js';
 import { sortBy } from '../ui/filters.js';
 import { selectCoin, updateCoinSearchLabel } from '../ui/combobox.js';
 
-export function resetColumnLayout() {
-    if (!confirm('Tem certeza que deseja resetar a ordem e largura das colunas para o padrão?')) return;
-
-    // Reset Main Table
-    const defaultColumnOrder = COLUMN_DEFS.map(col => col.key);
-    const defaultColumnWidths = {};
-    COLUMN_DEFS.forEach(col => {
-        defaultColumnWidths[col.key] = col.width;
-    });
-    
-    setColumnOrder(defaultColumnOrder);
-    setColumnWidths(defaultColumnWidths);
-    setVisibleColumns([]); // All visible
-
-    // Reset Aggregation Table
-    const defaultAggColumnOrder = AGG_COLUMN_DEFS.map(col => col.key);
-    const defaultAggColumnWidths = {};
-    AGG_COLUMN_DEFS.forEach(col => {
-        defaultAggColumnWidths[col.key] = col.width;
-    });
-
-    setAggColumnOrder(defaultAggColumnOrder);
-    setAggColumnWidths(defaultAggColumnWidths);
-
-    // Save and Render
-    saveSettings();
-    renderTableImmediate();
-    renderAggregationTable(true);
-    
-    // Update column width input
-    const widthInput = document.querySelector('.js-column-width-input');
-    if (widthInput) widthInput.value = 100; // Default
-}
-
 export function toggleShowSymbols() {
     setShowSymbols(!getShowSymbols());
     const isActive = getShowSymbols();
     const btnMobile = document.getElementById('btnShowSymMobile');
     const btnDesktop = document.getElementById('btnShowSymDesktop');
     if (btnMobile) {
-        btnMobile.textContent = isActive ? 'On' : 'Off';
+        btnMobile.textContent = isActive ? 'Sim' : 'Não';
         btnMobile.classList.toggle('active', isActive);
     }
     if (btnDesktop) {
@@ -660,39 +626,33 @@ export function setupColumnResizing() {
     ths.forEach(th => {
         const resizer = th.querySelector('.resizer');
         if (resizer) {
-            // Clone to remove old listeners
-            const newResizer = resizer.cloneNode(true);
-            resizer.parentNode.replaceChild(newResizer, resizer);
-            
-            newResizer.dataset.initialized = 'true';
+            if (resizer.dataset.initialized) return;
+            resizer.dataset.initialized = 'true';
 
-            newResizer.addEventListener('mousedown', initResize);
-            newResizer.addEventListener('touchstart', initResize, { passive: false });
-            newResizer.addEventListener('click', e => e.stopPropagation());
+            resizer.addEventListener('mousedown', initResize);
+            resizer.addEventListener('click', e => e.stopPropagation());
         }
     });
 }
 
 function initResize(e) {
     e.stopPropagation();
-    if (e.cancelable) e.preventDefault();
+    e.preventDefault();
 
     const resizer = e.target;
     const th = resizer.closest('th');
     if (!th) return;
 
-    const isTouch = e.type === 'touchstart';
-    const startX = isTouch ? e.touches[0].clientX : e.clientX;
+    const startX = e.clientX;
     const startWidth = th.offsetWidth;
 
     document.body.classList.add('resizing');
     th.classList.add('resizing-active');
 
     const onMouseMove = (e) => {
-        const clientX = isTouch ? e.touches[0].clientX : e.clientX;
         requestAnimationFrame(() => {
-            const diffX = clientX - startX;
-            const newWidth = Math.max(40, startWidth + diffX);
+            const diffX = e.clientX - startX;
+            const newWidth = Math.max(50, startWidth + diffX);
             th.style.width = `${newWidth}px`;
             th.style.minWidth = `${newWidth}px`;
             th.style.maxWidth = `${newWidth}px`;
@@ -702,14 +662,8 @@ function initResize(e) {
     const onMouseUp = () => {
         document.body.classList.remove('resizing');
         th.classList.remove('resizing-active');
-        
-        if (isTouch) {
-            document.removeEventListener('touchmove', onMouseMove);
-            document.removeEventListener('touchend', onMouseUp);
-        } else {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        }
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
 
         // Save new width
         const columnWidths = getColumnWidths() || {};
@@ -718,25 +672,22 @@ function initResize(e) {
         saveSettings();
     };
 
-    if (isTouch) {
-        document.addEventListener('touchmove', onMouseMove, { passive: false });
-        document.addEventListener('touchend', onMouseUp);
-    } else {
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    }
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
 }
 
 export function setupColumnDragAndDrop() {
     if (document.querySelector('.dragging-initialized')) {
+        console.log('Drag and drop already initialized');
         return;
     }
 
-    const tableHeaders = document.querySelectorAll('#positionsTable th[id^="th-"]');
+    console.log('Setting up column drag and drop...');
+    const tableHeaders = document.querySelectorAll('th[id^="th-"]');
+    console.log('Found table headers:', tableHeaders.length);
 
     // Track drag state
     let isDragging = false;
-    let potentialDrag = false;
     let dragStartX = 0;
     let dragStartY = 0;
     let draggedTh = null;
@@ -746,166 +697,115 @@ export function setupColumnDragAndDrop() {
         th.draggable = false;
     });
 
-    // Global mouse/touch event delegation for drag start
-    const onMouseDown = (e) => {
+    // Global mouse event delegation for drag start (no capture to run after resize)
+    document.addEventListener('mousedown', (e) => {
         // Skip if resizing
         if (document.body.classList.contains('resizing')) return;
 
-        const th = e.target.closest('#positionsTable th[id^="th-"]');
+        const th = e.target.closest('th[id^="th-"]');
         if (!th) return;
 
         // Skip if clicking on resizer
         const resizer = th.querySelector('.resizer');
         if (resizer && (e.target === resizer || resizer.contains(e.target))) return;
 
-        // Start potential drag
-        potentialDrag = true;
+        // Start drag
+        isDragging = true;
         draggedTh = th;
-        
-        const isTouch = e.type === 'touchstart';
-        dragStartX = isTouch ? e.touches[0].clientX : e.clientX;
-        dragStartY = isTouch ? e.touches[0].clientY : e.clientY;
-    };
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
 
-    // Global mouse/touch move for drag feedback
-    const onMouseMove = (e) => {
-        if (!potentialDrag && !isDragging) return;
+        th.classList.add('dragging');
+    }, false); // No capture to run after resize handler
 
-        const isTouch = e.type === 'touchmove';
-        const clientX = isTouch ? e.touches[0].clientX : e.clientX;
-        const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+    // Global mouse move for drag feedback
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging || !draggedTh) return;
 
-        const deltaX = clientX - dragStartX;
-        const deltaY = clientY - dragStartY;
+        const deltaX = e.clientX - dragStartX;
+        const deltaY = e.clientY - dragStartY;
 
-        if (potentialDrag) {
-             if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-                 // If vertical movement is dominant on touch, assume scroll and cancel drag
-                 if (isTouch && Math.abs(deltaY) > Math.abs(deltaX)) {
-                     potentialDrag = false;
-                     draggedTh = null;
-                     return;
-                 }
- 
-                 isDragging = true;
-                 potentialDrag = false;
-                 if (draggedTh) {
-                     draggedTh.classList.add('dragging');
-                     // Highlight dragged column cells
-                     const draggedColClass = draggedTh.id.replace('th-', 'col-');
-                     document.querySelectorAll(`.${draggedColClass}`).forEach(el => el.classList.add('dragging-column-cell'));
-                 }
-                 if (e.cancelable) e.preventDefault();
-             }
+        // Only show dragging state after moving a bit
+        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+            draggedTh.style.opacity = '0.5';
         }
 
-        if (isDragging) {
-            if (e.cancelable) e.preventDefault();
-            if (draggedTh) draggedTh.style.opacity = '0.5';
-    
-            // Find potential drop target
-            const targetElement = document.elementFromPoint(clientX, clientY);
-            const targetTh = targetElement?.closest('#positionsTable th[id^="th-"]');
-    
-            if (targetTh && targetTh !== draggedTh) {
-                // Remove drag-over from all headers
-                document.querySelectorAll('#positionsTable th').forEach(header => {
-                    header.classList.remove('drag-over');
-                });
-                // Add drag-over to current target
-                targetTh.classList.add('drag-over');
-
-                // Highlight target column cells
-                // First remove from all to ensure clean state
-                document.querySelectorAll('.drag-over-column-cell').forEach(el => el.classList.remove('drag-over-column-cell'));
-                
-                const targetColClass = targetTh.id.replace('th-', 'col-');
-                document.querySelectorAll(`.${targetColClass}`).forEach(el => el.classList.add('drag-over-column-cell'));
-            } else if (!targetTh) {
-                // If not over a valid target, clear drag-over highlights
-                document.querySelectorAll('.drag-over-column-cell').forEach(el => el.classList.remove('drag-over-column-cell'));
-                document.querySelectorAll('#positionsTable th').forEach(header => {
-                    header.classList.remove('drag-over');
-                });
-            }
-        }
-    };
-
-    // Global mouse/touch up for drop
-    const onMouseUp = (e) => {
-        if (!isDragging || !draggedTh) {
-            potentialDrag = false;
-            draggedTh = null;
-            return;
-        }
-
-        // Clean up highlights immediately
-        document.querySelectorAll('.dragging-column-cell').forEach(el => el.classList.remove('dragging-column-cell'));
-        document.querySelectorAll('.drag-over-column-cell').forEach(el => el.classList.remove('drag-over-column-cell'));
-
-
-        const isTouch = e.type === 'touchend';
-        let clientX, clientY;
-        
-        if (isTouch) {
-             const touch = e.changedTouches[0];
-             clientX = touch.clientX;
-             clientY = touch.clientY;
-        } else {
-             clientX = e.clientX;
-             clientY = e.clientY;
-        }
-
-        // Find drop target
-        const targetElement = document.elementFromPoint(clientX, clientY);
-        const targetTh = targetElement?.closest('#positionsTable th[id^="th-"]');
+        // Find potential drop target
+        const targetElement = document.elementFromPoint(e.clientX, e.clientY);
+        const targetTh = targetElement?.closest('th[id^="th-"]');
 
         if (targetTh && targetTh !== draggedTh) {
-            const draggedColumnId = draggedTh.id.replace('th-', 'col-');
-            const targetColumnId = targetTh.id.replace('th-', 'col-');
+            // Remove drag-over from all headers
+            document.querySelectorAll('th').forEach(header => {
+                header.classList.remove('drag-over');
+            });
+            // Add drag-over to current target
+            targetTh.classList.add('drag-over');
+        }
+    });
+
+    // Global mouse up for drop
+    document.addEventListener('mouseup', (e) => {
+        if (!isDragging || !draggedTh) return;
+
+        // Find drop target
+        const targetElement = document.elementFromPoint(e.clientX, e.clientY);
+        const targetTh = targetElement?.closest('th[id^="th-"]');
+
+        if (targetTh && targetTh !== draggedTh) {
+            console.log('Drop completed:', draggedTh.id, '->', targetTh.id);
+
+            const draggedColumnId = draggedTh.id.replace('th-', '');
+            const targetColumnId = targetTh.id.replace('th-', '');
+            console.log('Dragged:', draggedColumnId, 'Target:', targetColumnId);
 
             // Get current column order
             const currentOrder = getColumnOrder();
+            console.log('Current order:', currentOrder);
 
-            const draggedIndex = currentOrder.indexOf(draggedColumnId);
-            const targetIndex = currentOrder.indexOf(targetColumnId);
+            const draggedIndex = currentOrder.indexOf(`col-${draggedColumnId}`);
+            const targetIndex = currentOrder.indexOf(`col-${targetColumnId}`);
+            console.log('Indices - Dragged:', draggedIndex, 'Target:', targetIndex);
 
             if (draggedIndex !== -1 && targetIndex !== -1) {
                 // Reorder columns
                 const newOrder = [...currentOrder];
                 const [draggedColumn] = newOrder.splice(draggedIndex, 1);
                 newOrder.splice(targetIndex, 0, draggedColumn);
+                console.log('New order:', newOrder);
 
                 // Update state and save
                 setColumnOrder(newOrder);
                 saveSettings();
+                console.log('Order saved');
 
                 // Re-render table to apply new column order
-                renderTableImmediate();
+                renderTable();
+                console.log('Table re-rendered');
             }
         }
 
         // Clean up
         isDragging = false;
-        potentialDrag = false;
         if (draggedTh) {
             draggedTh.classList.remove('dragging');
             draggedTh.style.opacity = '';
             draggedTh = null;
         }
-        document.querySelectorAll('#positionsTable th').forEach(header => {
+        document.querySelectorAll('th').forEach(header => {
             header.classList.remove('drag-over');
         });
-    };
+    });
 
-    document.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('touchstart', onMouseDown, { passive: false });
-    
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('touchmove', onMouseMove, { passive: false });
-
-    document.addEventListener('mouseup', onMouseUp);
-    document.addEventListener('touchend', onMouseUp);
+    // Prevent default dragstart (we're handling it manually)
+    // Removed because it conflicts with HTML5 Drag & Drop API used in setupColumnDragAndDrop
+    /*
+    document.addEventListener('dragstart', (e) => {
+        if (e.target.closest('th[id^="th-"]')) {
+            e.preventDefault();
+        }
+    });
+    */
 
     // Mark as initialized
     const marker = document.createElement('div');

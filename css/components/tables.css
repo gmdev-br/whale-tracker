@@ -435,14 +435,3 @@ td {
     line-height: 1.2;
     height: auto;
 }
-
-/* ── Column Dragging & Highlighting ── */
-.dragging-column-cell {
-    opacity: 0.5;
-    background: rgba(156, 163, 175, 0.1);
-}
-
-.drag-over-column-cell {
-    border-left: 2px solid var(--accent);
-    background: rgba(59, 130, 246, 0.05); /* Optional: slight blue tint */
-}

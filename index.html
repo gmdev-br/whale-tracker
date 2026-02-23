@@ -39,7 +39,7 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 12px;
-            table-layout: fixed; /* Fixed layout for resizing */
+            table-layout: auto;
             text-align: right;
         }
 
@@ -48,9 +48,6 @@
             padding: 6px 8px;
             border-bottom: 1px solid var(--border-color);
             border-right: 1px solid rgba(255, 255, 255, 0.05);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
         }
 
         .agg-table th {
@@ -75,6 +72,44 @@
 
         .agg-table tr:hover {
             background: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        .col-agg-range {
+            width: 90px;
+        }
+
+        .col-agg-qty {
+            width: 60px;
+            text-align: center;
+        }
+
+        .col-agg-val {
+            width: 100px;
+        }
+
+        .col-agg-dom {
+            width: 90px;
+            text-align: center;
+        }
+
+        .col-agg-pct {
+            width: 70px;
+            text-align: center;
+        }
+
+        .col-agg-int {
+            width: 110px;
+            text-align: center;
+        }
+
+        .col-agg-zone {
+            width: 110px;
+            text-align: center;
+        }
+
+        .col-agg-assets {
+            width: auto;
+            text-align: left;
         }
 
         /* Zen Mode Styles */
@@ -415,12 +450,6 @@
                     </div>
                 </div>
                 <div class="ctrl">
-                    <label>Reset Layout</label>
-                    <button id="resetColumnsBtn" class="btn-zen" style="width: auto; justify-content: center;">
-                        <span>↺ Reset Columns</span>
-                    </button>
-                </div>
-                <div class="ctrl">
                     <label title="Column width">Col Width: <span id="columnWidthValDesktop"
                             class="js-column-width-val">100</span>px</label>
                     <input type="number" id="columnWidthInputDesktop" class="js-column-width-input" min="60" max="500"
@@ -653,19 +682,19 @@
                     <table class="agg-table" id="aggTable">
                         <thead>
                             <tr>
-                                <th id="th-agg-range-from" class="col-agg-range">Faixa<br>De ($)<div class="resizer"></div></th>
-                                <th id="th-agg-range-to" class="col-agg-range">Faixa<br>Até ($)<div class="resizer"></div></th>
-                                <th id="th-agg-qty-long" class="col-agg-qty">Qtd<br>Long<div class="resizer"></div></th>
-                                <th id="th-agg-val-long" class="col-agg-val">Notional<br>Long<div class="resizer"></div></th>
-                                <th id="th-agg-qty-short" class="col-agg-qty">Qtd<br>Short<div class="resizer"></div></th>
-                                <th id="th-agg-val-short" class="col-agg-val">Notional<br>Short<div class="resizer"></div></th>
-                                <th id="th-agg-val-total" class="col-agg-val">Total<br>Notional<div class="resizer"></div></th>
-                                <th id="th-agg-dom" class="col-agg-dom">Domi<br>nancia<div class="resizer"></div></th>
-                                <th id="th-agg-pct" class="col-agg-pct">% Dom<div class="resizer"></div></th>
-                                <th id="th-agg-int" class="col-agg-int">Inten<br>sidade<div class="resizer"></div></th>
-                                <th id="th-agg-zone" class="col-agg-zone">Tipo de<br>Zona<div class="resizer"></div></th>
-                                <th id="th-agg-assets-long" class="col-agg-assets">Ativos<br>Long<div class="resizer"></div></th>
-                                <th id="th-agg-assets-short" class="col-agg-assets">Ativos<br>Short<div class="resizer"></div></th>
+                                <th class="col-agg-range">Faixa<br>De ($)</th>
+                                <th class="col-agg-range">Faixa<br>Até ($)</th>
+                                <th class="col-agg-qty">Qtd<br>Long</th>
+                                <th class="col-agg-val">Notional<br>Long</th>
+                                <th class="col-agg-qty">Qtd<br>Short</th>
+                                <th class="col-agg-val">Notional<br>Short</th>
+                                <th class="col-agg-val">Total<br>Notional</th>
+                                <th class="col-agg-dom">Domi<br>nancia</th>
+                                <th class="col-agg-pct">% Dom</th>
+                                <th class="col-agg-int">Inten<br>sidade</th>
+                                <th class="col-agg-zone">Tipo de<br>Zona</th>
+                                <th class="col-agg-assets">Ativos<br>Long</th>
+                                <th class="col-agg-assets">Ativos<br>Short</th>
                             </tr>
                         </thead>
                         <tbody id="aggTableBody">

@@ -23,22 +23,6 @@ export const COLUMN_DEFS = [
     { key: 'col-accountValue', label: 'Acct. Value', width: 110 }
 ];
 
-export const AGG_COLUMN_DEFS = [
-    { key: 'col-agg-range-from', label: 'Faixa De ($)', width: 80 },
-    { key: 'col-agg-range-to', label: 'Faixa Até ($)', width: 80 },
-    { key: 'col-agg-qty-long', label: 'Qtd Long', width: 60 },
-    { key: 'col-agg-val-long', label: 'Notional Long', width: 100 },
-    { key: 'col-agg-qty-short', label: 'Qtd Short', width: 60 },
-    { key: 'col-agg-val-short', label: 'Notional Short', width: 100 },
-    { key: 'col-agg-val-total', label: 'Total Notional', width: 110 },
-    { key: 'col-agg-dom', label: 'Dominancia', width: 90 },
-    { key: 'col-agg-pct', label: '% Dom', width: 60 },
-    { key: 'col-agg-int', label: 'Intensidade', width: 90 },
-    { key: 'col-agg-zone', label: 'Tipo de Zona', width: 100 },
-    { key: 'col-agg-assets-long', label: 'Ativos Long', width: 120 },
-    { key: 'col-agg-assets-short', label: 'Ativos Short', width: 120 }
-];
-
 export const CURRENCY_META = {
     USD: { symbol: '$', locale: 'en-US' },
     BRL: { symbol: 'R$', locale: 'pt-BR' },

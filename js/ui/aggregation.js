@@ -2,12 +2,7 @@
 // LIQUID GLASS — Aggregation Table
 // ═══════════════════════════════════════════════════════════
 
-import {
-    getDisplayedRows, getCurrentPrices, getFxRates, getActiveEntryCurrency,
-    getAggInterval, getAggVolumeUnit, getShowAggSymbols, getAggZoneColors, getAggHighlightColor, getDecimalPlaces, getTooltipDelay,
-    getAggColumnOrder, setAggColumnOrder, getAggColumnWidths, setAggColumnWidths
-} from '../state.js';
-import { AGG_COLUMN_DEFS } from '../config.js';
+import { getDisplayedRows, getCurrentPrices, getFxRates, getActiveEntryCurrency, getAggInterval, getAggVolumeUnit, getShowAggSymbols, getAggZoneColors, getAggHighlightColor, getDecimalPlaces, getTooltipDelay } from '../state.js';
 import { getCorrelatedEntry } from '../utils/currency.js';
 import { fmtUSD, fmtCcy } from '../utils/formatters.js';
 import { enableVirtualScroll } from '../utils/virtualScroll.js';
@@ -17,29 +12,12 @@ let lastRenderedUnit = null;
 let lastRenderedInterval = null;
 let lastRenderedRowCount = 0;
 let lastRenderedColorsStr = '';
-let lastRenderedHeaderOrder = null;
 let aggVirtualScrollManager = null;
 let currentPriceRangeIndex = -1; // Track index for the floating button
 
 export function renderAggregationTable(force = false) {
     const aggSection = document.getElementById('aggSectionWrapper');
     const isCollapsed = aggSection?.classList.contains('collapsed');
-
-    const aggColumnOrder = getAggColumnOrder();
-    const currentOrderStr = JSON.stringify(aggColumnOrder);
-
-    // Initialize or update headers if order changed
-    if (lastRenderedHeaderOrder !== currentOrderStr) {
-        renderAggregationHeaders();
-        force = true; // Force render of rows
-        
-        // Force recreation of virtual scroll to ensure clean render
-        if (aggVirtualScrollManager && typeof aggVirtualScrollManager.destroy === 'function') {
-            aggVirtualScrollManager.destroy();
-        }
-        
-        lastRenderedHeaderOrder = currentOrderStr;
-    }
 
     // Optimization: Skip rendering if collapsed, unless forced (e.g. initial load or search)
     if (isCollapsed && !force) {
@@ -441,28 +419,25 @@ export function renderAggregationTable(force = false) {
                 rangeWeight = '700';
             }
 
-            const cellRenderers = {
-                'col-agg-range-from': () => `<td ${tooltipAttr} class="${tooltipClass} col-agg-range-from" style="font-family:monospace; font-weight:${rangeWeight}; color:${rangeColor}">
+            const newContent = `
+                <td ${tooltipAttr} class="${tooltipClass}" style="font-family:monospace; font-weight:${rangeWeight}; color:${rangeColor}">
                     ${starIndicator}
                     ${isCurrentPriceRange ? `<div style="font-size:10px; color:${aggHighlightColor}; margin-bottom:2px">BTC $${btcPrice.toLocaleString()}</div>` : ''}
                     $${b.faixaDe.toLocaleString()}
-                </td>`,
-                'col-agg-range-to': () => `<td ${tooltipAttr} class="${tooltipClass} col-agg-range-to" style="font-family:monospace; color:${isRangeMultiple1000 || isRangeMultiple500 ? rangeColor : '#9ca3af'}; font-weight:${isRangeMultiple1000 ? '800' : (isRangeMultiple500 ? '700' : '400')}">$${b.faixaAte.toLocaleString()}</td>`,
-                'col-agg-qty-long': () => `<td class="col-agg-qty-long" style="color:${longCol}; text-align:center">${formatQty(b.qtdLong)}</td>`,
-                'col-agg-val-long': () => `<td ${tooltipAttr} class="${tooltipClass} col-agg-val-long" style="color:${longCol}; font-family:monospace; font-weight:${b.notionalLong > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalLong)}</td>`,
-                'col-agg-qty-short': () => `<td class="col-agg-qty-short" style="color:${shortCol}; text-align:center">${formatQty(b.qtdShort)}</td>`,
-                'col-agg-val-short': () => `<td ${tooltipAttr} class="${tooltipClass} col-agg-val-short" style="color:${shortCol}; font-family:monospace; font-weight:${b.notionalShort > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalShort)}</td>`,
-                'col-agg-val-total': () => `<td ${tooltipAttr} class="${tooltipClass} col-agg-val-total" style="font-family:monospace; color:${totalNotionalColor}; font-weight:${fwSemi}; ${valBg}">${formatVal(totalNotional)}</td>`,
-                'col-agg-dom': () => `<td class="col-agg-dom" style="color:${domColor}; font-weight:${fwBold}; background:${domBg}">${domType}</td>`,
-                'col-agg-pct': () => `<td class="col-agg-pct" style="color:${domColor}; font-weight:${fwBold}; background:${domBg}">${domPct > 0 ? domPct.toFixed(1) + '%' : '—'}</td>`,
-                'col-agg-int': () => `<td class="col-agg-int" style="color:${intColor}; font-size:11px; font-weight:${fwSemi}">${intType}</td>`,
-                'col-agg-zone': () => `<td class="col-agg-zone" style="color:${zoneColor}; font-weight:${fwSemi}">${zoneType}</td>`,
-                'col-agg-assets-long': () => `<td class="col-agg-assets-long" style="color:${longCol}; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosLong).join(', ')}">${Array.from(b.ativosLong).join(', ')}</td>`,
-                'col-agg-assets-short': () => `<td class="col-agg-assets-short" style="color:${shortCol}; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosShort).join(', ')}">${Array.from(b.ativosShort).join(', ')}</td>`
-            };
-
-            const aggColumnOrder = getAggColumnOrder() || AGG_COLUMN_DEFS.map(c => c.key);
-            const newContent = aggColumnOrder.map(key => cellRenderers[key] ? cellRenderers[key]() : '').join('');
+                </td>
+                <td ${tooltipAttr} class="${tooltipClass}" style="font-family:monospace; color:${isRangeMultiple1000 || isRangeMultiple500 ? rangeColor : '#9ca3af'}; font-weight:${isRangeMultiple1000 ? '800' : (isRangeMultiple500 ? '700' : '400')}">$${b.faixaAte.toLocaleString()}</td>
+                <td style="color:${longCol}; text-align:center">${formatQty(b.qtdLong)}</td>
+                <td ${tooltipAttr} class="${tooltipClass}" style="color:${longCol}; font-family:monospace; font-weight:${b.notionalLong > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalLong)}</td>
+                <td style="color:${shortCol}; text-align:center">${formatQty(b.qtdShort)}</td>
+                <td ${tooltipAttr} class="${tooltipClass}" style="color:${shortCol}; font-family:monospace; font-weight:${b.notionalShort > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalShort)}</td>
+                <td ${tooltipAttr} class="${tooltipClass}" style="font-family:monospace; color:${totalNotionalColor}; font-weight:${fwSemi}; ${valBg}">${formatVal(totalNotional)}</td>
+                <td style="color:${domColor}; font-weight:${fwBold}; background:${domBg}">${domType}</td>
+                <td style="color:${domColor}; font-weight:${fwBold}; background:${domBg}">${domPct > 0 ? domPct.toFixed(1) + '%' : '—'}</td>
+                <td style="color:${intColor}; font-size:11px; font-weight:${fwSemi}">${intType}</td>
+                <td style="color:${zoneColor}; font-weight:${fwSemi}">${zoneType}</td>
+                <td style="color:${longCol}; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosLong).join(', ')}">${Array.from(b.ativosLong).join(', ')}</td>
+                <td style="color:${shortCol}; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosShort).join(', ')}">${Array.from(b.ativosShort).join(', ')}</td>
+            `;
 
             return `<tr class="${trClass}" style="${expectedStyle}">${newContent}</tr>`;
         };
@@ -727,289 +702,3 @@ document.addEventListener('mouseover', (e) => {
         }
     }, delay);
 });
-
-// ── Aggregation Table Header Management ──
-
-export function renderAggregationHeaders() {
-    const table = document.getElementById('aggTable');
-    if (!table) return;
-    const thead = table.querySelector('thead');
-    if (!thead) return;
-
-    const order = getAggColumnOrder() || AGG_COLUMN_DEFS.map(c => c.key);
-    const widths = getAggColumnWidths() || {};
-
-    // Update tracking
-    lastRenderedHeaderOrder = order.join(',');
-
-    let tr = thead.querySelector('tr');
-    if (!tr) {
-        tr = document.createElement('tr');
-        thead.appendChild(tr);
-    }
-    tr.innerHTML = ''; // Clear existing
-
-    order.forEach(key => {
-        const def = AGG_COLUMN_DEFS.find(c => c.key === key);
-        if (!def) return;
-
-        const th = document.createElement('th');
-        // Derive ID from key: col-agg-range-from -> th-agg-range-from
-        th.id = key.replace('col-', 'th-');
-        // Derive class from key: col-agg-range-from -> col-agg-range (approximate, or just use key)
-        // Original HTML used specific classes like col-agg-range, col-agg-qty.
-        // Let's try to map them or just use the key as class for simplicity.
-        // Existing CSS might rely on specific classes.
-        // config.js doesn't have class info.
-        // But I can infer it or just add the key.
-        th.className = key; 
-        th.innerHTML = `${def.label}<div class="resizer"></div>`;
-        th.dataset.key = key;
-        th.style.cursor = 'grab'; // Indicate draggable
-
-        // Apply width
-        const w = widths[th.id] || def.width;
-        if (w) {
-            th.style.width = `${w}px`;
-            th.style.minWidth = `${w}px`;
-            th.style.maxWidth = `${w}px`;
-        }
-
-        tr.appendChild(th);
-    });
-
-    // Re-initialize events
-    setupAggColumnResizing();
-    setupAggColumnDragAndDrop();
-}
-
-function setupAggColumnResizing() {
-    const table = document.getElementById('aggTable');
-    if (!table) return;
-
-    const ths = table.querySelectorAll('th');
-    ths.forEach(th => {
-        const resizer = th.querySelector('.resizer');
-        if (resizer) {
-            // Clone to remove old listeners
-            const newResizer = resizer.cloneNode(true);
-            resizer.parentNode.replaceChild(newResizer, resizer);
-            
-            newResizer.addEventListener('mousedown', initAggResize);
-            newResizer.addEventListener('touchstart', initAggResize, { passive: false });
-            newResizer.addEventListener('click', e => e.stopPropagation());
-        }
-    });
-}
-
-function initAggResize(e) {
-    e.stopPropagation();
-    if (e.cancelable) e.preventDefault();
-
-    const resizer = e.target;
-    const th = resizer.closest('th');
-    if (!th) return;
-
-    const isTouch = e.type === 'touchstart';
-    const startX = isTouch ? e.touches[0].clientX : e.clientX;
-    const startWidth = th.offsetWidth;
-
-    document.body.classList.add('resizing');
-    th.classList.add('resizing-active');
-
-    const onMove = (e) => {
-        const clientX = isTouch ? e.touches[0].clientX : e.clientX;
-        requestAnimationFrame(() => {
-            const diffX = clientX - startX;
-            const newWidth = Math.max(40, startWidth + diffX);
-            th.style.width = `${newWidth}px`;
-            th.style.minWidth = `${newWidth}px`;
-            th.style.maxWidth = `${newWidth}px`;
-        });
-    };
-
-    const onEnd = () => {
-        document.body.classList.remove('resizing');
-        th.classList.remove('resizing-active');
-        
-        if (isTouch) {
-            document.removeEventListener('touchmove', onMove);
-            document.removeEventListener('touchend', onEnd);
-        } else {
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onEnd);
-        }
-
-        // Save new width
-        const widths = getAggColumnWidths() || {};
-        widths[th.id] = parseInt(th.style.width);
-        setAggColumnWidths(widths);
-        window.dispatchEvent(new CustomEvent('save-settings'));
-    };
-
-    if (isTouch) {
-        document.addEventListener('touchmove', onMove, { passive: false });
-        document.addEventListener('touchend', onEnd);
-    } else {
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onEnd);
-    }
-}
-
-function setupAggColumnDragAndDrop() {
-    if (document.body.dataset.aggDragInitialized) return;
-    document.body.dataset.aggDragInitialized = 'true';
-
-    let isDragging = false;
-    let potentialDrag = false;
-    let dragStartX = 0;
-    let dragStartY = 0;
-    let draggedTh = null;
-
-    const onMouseDown = (e) => {
-        // Skip if resizing
-        if (document.body.classList.contains('resizing')) return;
-
-        const th = e.target.closest('#aggTable th');
-        if (!th) return;
-
-        // Skip if clicking on resizer
-        const resizer = th.querySelector('.resizer');
-        if (resizer && (e.target === resizer || resizer.contains(e.target))) return;
-
-        potentialDrag = true;
-        draggedTh = th;
-        
-        const isTouch = e.type === 'touchstart';
-        dragStartX = isTouch ? e.touches[0].clientX : e.clientX;
-        dragStartY = isTouch ? e.touches[0].clientY : e.clientY;
-    };
-
-    const onMouseMove = (e) => {
-        if (!potentialDrag && !isDragging) return;
-
-        const isTouch = e.type === 'touchmove';
-        const clientX = isTouch ? e.touches[0].clientX : e.clientX;
-        const clientY = isTouch ? e.touches[0].clientY : e.clientY;
-
-        const deltaX = clientX - dragStartX;
-        const deltaY = clientY - dragStartY;
-
-        if (potentialDrag) {
-            // Check threshold
-            if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-                // If vertical movement is dominant on touch, assume scroll and cancel drag
-                if (isTouch && Math.abs(deltaY) > Math.abs(deltaX)) {
-                    potentialDrag = false;
-                    draggedTh = null;
-                    return;
-                }
-
-                isDragging = true;
-                potentialDrag = false;
-                if (draggedTh) {
-                    draggedTh.classList.add('dragging');
-                    // Highlight dragged column cells
-                    const draggedKey = draggedTh.dataset.key;
-                    if (draggedKey) {
-                        document.querySelectorAll(`.${draggedKey}`).forEach(el => el.classList.add('dragging-column-cell'));
-                    }
-                }
-                if (e.cancelable) e.preventDefault();
-            }
-        }
-
-        if (isDragging) {
-            if (e.cancelable) e.preventDefault();
-            if (draggedTh) draggedTh.style.opacity = '0.5';
-    
-            const targetElement = document.elementFromPoint(clientX, clientY);
-            const targetTh = targetElement?.closest('#aggTable th');
-    
-            if (targetTh && targetTh !== draggedTh) {
-                document.querySelectorAll('#aggTable th').forEach(h => h.classList.remove('drag-over'));
-                targetTh.classList.add('drag-over');
-
-                // Highlight target column cells
-                document.querySelectorAll('.drag-over-column-cell').forEach(el => el.classList.remove('drag-over-column-cell'));
-                const targetKey = targetTh.dataset.key;
-                if (targetKey) {
-                    document.querySelectorAll(`.${targetKey}`).forEach(el => el.classList.add('drag-over-column-cell'));
-                }
-            } else if (!targetTh) {
-                document.querySelectorAll('#aggTable th').forEach(h => h.classList.remove('drag-over'));
-                document.querySelectorAll('.drag-over-column-cell').forEach(el => el.classList.remove('drag-over-column-cell'));
-            }
-        }
-    };
-
-    const onMouseUp = (e) => {
-        if (!isDragging || !draggedTh) {
-            // Reset potential drag if we just clicked/tapped without moving enough
-            potentialDrag = false;
-            draggedTh = null;
-            return;
-        }
-
-        const isTouch = e.type === 'touchend';
-        let clientX, clientY;
-        
-        if (isTouch) {
-             const touch = e.changedTouches[0];
-             clientX = touch.clientX;
-             clientY = touch.clientY;
-        } else {
-             clientX = e.clientX;
-             clientY = e.clientY;
-        }
-
-        const targetElement = document.elementFromPoint(clientX, clientY);
-        const targetTh = targetElement?.closest('#aggTable th');
-
-        if (targetTh && targetTh !== draggedTh) {
-            const draggedKey = draggedTh.dataset.key;
-            const targetKey = targetTh.dataset.key;
-
-            const currentOrder = getAggColumnOrder() || AGG_COLUMN_DEFS.map(c => c.key);
-            const draggedIndex = currentOrder.indexOf(draggedKey);
-            const targetIndex = currentOrder.indexOf(targetKey);
-
-            if (draggedIndex !== -1 && targetIndex !== -1) {
-                const newOrder = [...currentOrder];
-                const [removed] = newOrder.splice(draggedIndex, 1);
-                newOrder.splice(targetIndex, 0, removed);
-
-                setAggColumnOrder(newOrder);
-                window.dispatchEvent(new CustomEvent('save-settings'));
-                
-                // Re-render headers and table
-                renderAggregationHeaders();
-                renderAggregationTable(true);
-            }
-        }
-
-        isDragging = false;
-        potentialDrag = false;
-        if (draggedTh) {
-            draggedTh.classList.remove('dragging');
-            draggedTh.style.opacity = '';
-            draggedTh = null;
-        }
-        document.querySelectorAll('#aggTable th').forEach(h => h.classList.remove('drag-over'));
-        
-        // Remove column highlighting classes
-        document.querySelectorAll('.dragging-column-cell').forEach(el => el.classList.remove('dragging-column-cell'));
-        document.querySelectorAll('.drag-over-column-cell').forEach(el => el.classList.remove('drag-over-column-cell'));
-    };
-
-    document.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('touchstart', onMouseDown, { passive: false });
-    
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('touchmove', onMouseMove, { passive: false });
-
-    document.addEventListener('mouseup', onMouseUp);
-    document.addEventListener('touchend', onMouseUp);
-}
-
-

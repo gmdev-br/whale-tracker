@@ -9,12 +9,10 @@ import {
     getChartHighLevSplit, getChartHeight, getLiqChartHeight, getSavedScatterState,
     getSavedLiqState, getColumnWidths, getColumnWidth, getActiveCurrency, getActiveEntryCurrency, getDecimalPlaces, getLeverageColors, getFontSize, getFontSizeKnown, getRowHeight, setRowHeight, getGridSpacing, getMinBtcVolume,
     getAggInterval, getAggTableHeight, getAggVolumeUnit, getIsZenMode, getLastSeenAccountValues, getShowAggSymbols, getAggZoneColors, getAggHighlightColor, getTooltipDelay,
-    getAggColumnOrder, getAggColumnWidths,
     setSortKey, setSortDir, setSavedScatterState, setSavedLiqState,
-    setColumnOrder, setVisibleColumns, setSelectedCoins, setRankingLimit, setColorMaxLev, setChartHighLevSplit, setChartMode, setBubbleScale, setBubbleOpacity, setLineThickness, setAggregationFactor, setPriceMode, setShowSymbols, setPriceUpdateInterval, setDecimalPlaces, setFontSize, setFontSizeKnown, setLeverageColors, setColumnWidth, setGridSpacing, setMinBtcVolume, setAggInterval, setAggTableHeight, setAggVolumeUnit, setIsZenMode, setLastSeenAccountValues, setShowAggSymbols, setAggZoneColors, setAggHighlightColor, setTooltipDelay,
-    setAggColumnOrder, setAggColumnWidths
+    setColumnOrder, setVisibleColumns, setSelectedCoins, setRankingLimit, setColorMaxLev, setChartHighLevSplit, setChartMode, setBubbleScale, setBubbleOpacity, setLineThickness, setAggregationFactor, setPriceMode, setShowSymbols, setPriceUpdateInterval, setDecimalPlaces, setFontSize, setFontSizeKnown, setLeverageColors, setColumnWidth, setGridSpacing, setMinBtcVolume, setAggInterval, setAggTableHeight, setAggVolumeUnit, setIsZenMode, setLastSeenAccountValues, setShowAggSymbols, setAggZoneColors, setAggHighlightColor, setTooltipDelay
 } from '../state.js';
-import { COLUMN_DEFS, AGG_COLUMN_DEFS } from '../config.js';
+import { COLUMN_DEFS } from '../config.js';
 import { cbSetValue, updateCoinSearchLabel } from '../ui/combobox.js';
 import {
     applyColumnVisibility,
@@ -101,7 +99,6 @@ export function saveSettings(getChartState = null, savedScatterState = null, sav
         aggInterval: getAggInterval(),
         aggTableHeight: getAggTableHeight(),
         aggVolumeUnit: getAggVolumeUnit(),
-        aggColumnOrder: getAggColumnOrder(),
         isZenMode: getIsZenMode(),
         showAggSymbols: getShowAggSymbols(),
         aggZoneColors: getAggZoneColors(),
@@ -164,30 +161,6 @@ export function loadSettings() {
         s.columnOrder = defaultOrder;
     }
 
-    // Initialize aggregation column order
-    if (s && s.aggColumnOrder && s.aggColumnOrder.length > 0) {
-        // Merge new columns from AGG_COLUMN_DEFS that are missing in saved order
-        const currentKeys = AGG_COLUMN_DEFS.map(c => c.key);
-        const savedKeys = new Set(s.aggColumnOrder);
-        currentKeys.forEach(key => {
-            if (!savedKeys.has(key)) {
-                s.aggColumnOrder.push(key);
-            }
-        });
-        console.log('Setting aggColumnOrder from saved:', s.aggColumnOrder);
-        setAggColumnOrder(s.aggColumnOrder);
-    } else {
-        // Initialize with default column order
-        const defaultOrder = AGG_COLUMN_DEFS.map(c => c.key);
-        console.log('Setting default aggColumnOrder:', defaultOrder);
-        setAggColumnOrder(defaultOrder);
-    }
-
-    // Initialize aggregation column widths
-    if (s && s.aggColumnWidths) {
-        setAggColumnWidths(s.aggColumnWidths);
-    }
-
     // Initialize visible columns
     if (s && s.visibleColumns && s.visibleColumns.length > 0) {
         // Filter out invalid keys from visibleColumns
@@ -223,27 +196,7 @@ export function loadSettings() {
         updateColumnSelectDisplay();
     } else {
         // Initialize with all columns visible
-        const allColumns = COLUMN_DEFS.map(c => c.key);
-        let defaultVisible = [...allColumns];
-
-        // Mobile optimization: Hide less important columns by default on small screens
-        if (window.innerWidth <= 768) {
-            // Priority columns for mobile: Coin, Value, PnL, Entry, Liq
-            const mobileHidden = [
-                'col-num', 
-                'col-address', 
-                'col-szi', 
-                'col-leverage', 
-                'col-valueCcy', 
-                'col-entryCcy', 
-                'col-funding', 
-                'col-distToLiq', 
-                'col-accountValue'
-            ];
-            defaultVisible = defaultVisible.filter(key => !mobileHidden.includes(key));
-            console.log('Mobile detected: Setting optimized default columns');
-        }
-
+        const defaultVisible = COLUMN_DEFS.map(c => c.key);
         console.log('Setting default visibleColumns:', defaultVisible);
         setVisibleColumns(defaultVisible);
         s = s || {};

@@ -393,54 +393,29 @@
     }
 
     /* Sticky Columns for Mobile Context */
-    th.col-coin,
-    td.col-coin {
+    th.col-num,
+    td.col-num {
         position: sticky !important;
         left: 0;
-        z-index: 2; /* Ensure it stays above scrolling content */
-        background: #0d1117; /* Dark background to cover scrolling content */
-        border-right: 1px solid var(--glass-border);
-        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2); /* Shadow to indicate elevation */
-        /* width: 80px !important; Removed to allow user resizing */
-        /* min-width: 80px !important; Removed to allow user resizing */
-        /* max-width: 80px !important; Removed to allow user resizing */
-    }
-
-    th.col-coin {
-        z-index: 205 !important; /* Higher than regular header (200) */
-        background: #0a0e1a; /* Match header background */
-    }
-
-    /* Aggregation Table Sticky Column (Range From) */
-    #aggTable th:first-child,
-    #aggTable td:first-child {
-        position: sticky !important;
-        left: 0;
-        z-index: 2;
-        background: #0d1117; /* Match mobile bg */
-        border-right: 1px solid var(--glass-border);
-        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
-        /* width: 100px !important; Removed to allow user resizing */
-        /* min-width: 100px !important; Removed to allow user resizing */
-    }
-    
-    #aggTable th:first-child {
-        z-index: 205 !important;
+        z-index: 5;
         background: #0a0e1a;
     }
 
-    /* Ensure hover effect works on sticky column */
-    tbody tr:hover td.col-coin,
-    #aggTable tbody tr:hover td:first-child {
-        background: #151a25; /* Slightly lighter on hover */
+    th.col-coin,
+    td.col-coin {
+        position: sticky !important;
+        left: 40px;
+        z-index: 5;
+        background: #0a0e1a;
+        box-shadow: 4px 0 8px rgba(0, 0, 0, 0.4);
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
     }
 
-    /* Remove sticky from Num column as it's less critical */
     th.col-num,
-    td.col-num {
-        position: static !important;
-        border-right: none;
-        box-shadow: none;
+    th.col-coin {
+        z-index: 6;
+        /* Headers stay above rows */
+        background: #0a0e1a;
     }
 
     /* Table container styling */
