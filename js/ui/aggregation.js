@@ -3,9 +3,10 @@
 // ═══════════════════════════════════════════════════════════
 
 import { getDisplayedRows, getCurrentPrices, getFxRates, getActiveEntryCurrency, getAggInterval, getAggVolumeUnit, getShowAggSymbols, getAggZoneColors, getAggHighlightColor, getDecimalPlaces, getTooltipDelay } from '../state.js';
-import { getCorrelatedEntry } from '../utils/currency.js';
+import { getCorrelatedEntry, getCorrelatedPrice } from '../utils/currency.js';
 import { fmtUSD, fmtCcy } from '../utils/formatters.js';
 import { enableVirtualScroll } from '../utils/virtualScroll.js';
+import { CURRENCY_META } from '../config.js';
 
 let lastRenderedBand = null;
 let lastRenderedUnit = null;
@@ -76,7 +77,7 @@ export function renderAggregationTable(force = false) {
     }
 
     if (!rows || rows.length === 0) {
-        document.getElementById('aggTableBody').innerHTML = '<tr><td colspan="13" class="empty-cell">Sem dados disponíveis.</td></tr>';
+        document.getElementById('aggTableBody').innerHTML = '<tr><td colspan="14" class="empty-cell">Sem dados disponíveis.</td></tr>';
         document.getElementById('aggStatsBar').innerHTML = '';
         lastRenderedRowCount = 0;
         return;
@@ -115,6 +116,8 @@ export function renderAggregationTable(force = false) {
                 notionalLong: 0,
                 qtdShort: 0,
                 notionalShort: 0,
+                sumLiqNotionalLong: 0,
+                sumLiqNotionalShort: 0,
                 ativosLong: new Set(),
                 ativosShort: new Set(),
                 positionsLong: [],
@@ -128,12 +131,20 @@ export function renderAggregationTable(force = false) {
         if (r.side === 'long') {
             b.qtdLong++;
             b.notionalLong += val;
+            if (r.liquidationPx > 0) {
+                const liqPriceCorr = getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
+                b.sumLiqNotionalLong += (liqPriceCorr * val);
+            }
             b.ativosLong.add(r.coin);
             b.positionsLong.push(r);
             totalLongNotional += val;
         } else if (r.side === 'short') {
             b.qtdShort++;
             b.notionalShort += val;
+            if (r.liquidationPx > 0) {
+                const liqPriceCorr = getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
+                b.sumLiqNotionalShort += (liqPriceCorr * val);
+            }
             b.ativosShort.add(r.coin);
             b.positionsShort.push(r);
             totalShortNotional += val;
@@ -456,24 +467,41 @@ export function renderAggregationTable(force = false) {
                 rangeWeight = '700';
             }
 
+            // Calculate weighted average liquidation prices
+            const avgLiqLong = b.notionalLong > 0 ? b.sumLiqNotionalLong / b.notionalLong : 0;
+            const avgLiqShort = b.notionalShort > 0 ? b.sumLiqNotionalShort / b.notionalShort : 0;
+
+            const formatLiq = (val, col) => {
+                if (val === 0) return '—';
+                const entMeta = CURRENCY_META[activeEntryCurrency] || CURRENCY_META.USD;
+                const sym = showAggSymbols ? entMeta.symbol : '';
+                return `<span style="color:${col}">${sym}${val.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>`;
+            };
+
+            const liqHtml = `<div style="display:flex; flex-direction:column; gap:2px; font-size:10px; line-height:1">
+                ${b.notionalLong > 0 ? `<div>L: ${formatLiq(avgLiqLong, colorLong)}</div>` : ''}
+                ${b.notionalShort > 0 ? `<div>S: ${formatLiq(avgLiqShort, colorShort)}</div>` : ''}
+            </div>`;
+
             const newContent = `
-                <td ${tooltipAttr} class="${tooltipClass}" style="font-family:monospace; font-weight:${rangeWeight}; color:${rangeColor}">
+                <td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; font-weight:${rangeWeight}; color:${rangeColor}">
                     ${starIndicator}
                     ${isCurrentPriceRange ? `<div style="font-size:10px; color:${aggHighlightColor}; margin-bottom:2px">BTC $${btcPrice.toLocaleString()}</div>` : ''}
                     $${b.faixaDe.toLocaleString()}
                 </td>
-                <td ${tooltipAttr} class="${tooltipClass}" style="font-family:monospace; color:${isRangeMultiple1000 || isRangeMultiple500 ? rangeColor : '#9ca3af'}; font-weight:${isRangeMultiple1000 ? '800' : (isRangeMultiple500 ? '700' : '400')}">$${b.faixaAte.toLocaleString()}</td>
-                <td style="color:${longCol}; text-align:center">${formatQty(b.qtdLong)}</td>
-                <td ${tooltipAttr} class="${tooltipClass}" style="color:${longCol}; font-family:monospace; font-weight:${b.notionalLong > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalLong)}</td>
-                <td style="color:${shortCol}; text-align:center">${formatQty(b.qtdShort)}</td>
-                <td ${tooltipAttr} class="${tooltipClass}" style="color:${shortCol}; font-family:monospace; font-weight:${b.notionalShort > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalShort)}</td>
-                <td ${tooltipAttr} class="${tooltipClass}" style="font-family:monospace; color:${totalNotionalColor}; font-weight:${fwSemi}; ${valBg}">${formatVal(totalNotional)}</td>
-                <td style="color:${domColor}; font-weight:${fwBold}; background:${domBg}">${domType}</td>
-                <td style="color:${domColor}; font-weight:${fwBold}; background:${domBg}">${domPct > 0 ? domPct.toFixed(1) + '%' : '—'}</td>
-                <td style="color:${intColor}; font-size:11px; font-weight:${fwSemi}">${intType}</td>
-                <td style="color:${zoneColor}; font-weight:${fwSemi}">${zoneType}</td>
-                <td style="color:${longCol}; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosLong).join(', ')}">${Array.from(b.ativosLong).join(', ')}</td>
-                <td style="color:${shortCol}; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosShort).join(', ')}">${Array.from(b.ativosShort).join(', ')}</td>
+                <td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; color:${isRangeMultiple1000 || isRangeMultiple500 ? rangeColor : '#9ca3af'}; font-weight:${isRangeMultiple1000 ? '800' : (isRangeMultiple500 ? '700' : '400')}">$${b.faixaAte.toLocaleString()}</td>
+                <td class="col-agg-liq" style="font-family:monospace; vertical-align:middle">${liqHtml}</td>
+                <td class="col-agg-qty" style="color:${longCol}; text-align:center">${formatQty(b.qtdLong)}</td>
+                <td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="color:${longCol}; font-family:monospace; font-weight:${b.notionalLong > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalLong)}</td>
+                <td class="col-agg-qty" style="color:${shortCol}; text-align:center">${formatQty(b.qtdShort)}</td>
+                <td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="color:${shortCol}; font-family:monospace; font-weight:${b.notionalShort > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalShort)}</td>
+                <td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="font-family:monospace; color:${totalNotionalColor}; font-weight:${fwSemi}; ${valBg}">${formatVal(totalNotional)}</td>
+                <td class="col-agg-dom" style="color:${domColor}; font-weight:${fwBold}; background:${domBg}">${domType}</td>
+                <td class="col-agg-pct" style="color:${domColor}; font-weight:${fwBold}; background:${domBg}">${domPct > 0 ? domPct.toFixed(1) + '%' : '—'}</td>
+                <td class="col-agg-int" style="color:${intColor}; font-size:11px; font-weight:${fwSemi}">${intType}</td>
+                <td class="col-agg-zone" style="color:${zoneColor}; font-weight:${fwSemi}">${zoneType}</td>
+                <td class="col-agg-assets" style="color:${longCol}; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosLong).join(', ')}">${Array.from(b.ativosLong).join(', ')}</td>
+                <td class="col-agg-assets" style="color:${shortCol}; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosShort).join(', ')}">${Array.from(b.ativosShort).join(', ')}</td>
             `;
 
             return `<tr class="${trClass}" style="${expectedStyle}">${newContent}</tr>`;
@@ -486,7 +514,7 @@ export function renderAggregationTable(force = false) {
         aggVirtualScrollManager.renderRow = rowRenderer;
         aggVirtualScrollManager.setData(fullBandArray);
     } else {
-        document.getElementById('aggTableBody').innerHTML = '<tr><td colspan="13" class="empty-cell">Sem dados disponíveis.</td></tr>';
+        document.getElementById('aggTableBody').innerHTML = '<tr><td colspan="14" class="empty-cell">Sem dados disponíveis.</td></tr>';
     }
 }
 

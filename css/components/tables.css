@@ -431,6 +431,19 @@ td {
 }
 
 /* ── Aggregation Table Overrides ── */
+/* O thead da tabela de agregação NÃO usa sticky para evitar desalinhamento
+   com overflow-y:scroll. O header está visível pois a tabela tem altura fixa. */
+.agg-table-wrap .agg-table thead tr {
+    position: static;
+    top: auto;
+    z-index: auto;
+}
+
+.agg-table-header thead tr {
+    position: static;
+    border-bottom: 1px solid var(--glass-border);
+}
+
 .agg-table th {
     white-space: normal;
     vertical-align: bottom;
@@ -438,6 +451,61 @@ td {
     line-height: 1.2;
     height: auto;
 }
+
+
+.col-agg-range {
+    width: 90px;
+    text-align: left;
+}
+
+.col-agg-liq {
+    width: 110px;
+    text-align: left;
+}
+
+.col-agg-qty {
+    width: 70px;
+    text-align: center;
+}
+
+.col-agg-val {
+    width: 100px;
+    text-align: right;
+}
+
+.col-agg-dom {
+    width: 85px;
+    text-align: center;
+}
+
+.col-agg-pct {
+    width: 65px;
+    text-align: center;
+}
+
+.col-agg-int {
+    width: 110px;
+    text-align: center;
+}
+
+.col-agg-zone {
+    width: 100px;
+    text-align: center;
+}
+
+.col-agg-assets {
+    width: 140px;
+    text-align: left;
+}
+
+.agg-table td {
+    padding: 6px;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 
 /* ── Live Update Indicator ── */
 .agg-live-badge {
