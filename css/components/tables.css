@@ -13,10 +13,13 @@
 
 /* ── Table ── */
 table {
-    width: max-content; /* Respect column widths, don't stretch */
+    width: max-content;
+    /* Respect column widths, don't stretch */
     border-collapse: collapse;
-    min-width: auto; /* Let content dictate width */
-    table-layout: fixed; /* Fixed layout for resizing */
+    min-width: auto;
+    /* Let content dictate width */
+    table-layout: fixed;
+    /* Fixed layout for resizing */
 }
 
 /* Default column width if not set inline */
@@ -434,4 +437,47 @@ td {
     padding: 8px 6px;
     line-height: 1.2;
     height: auto;
+}
+
+/* ── Live Update Indicator ── */
+.agg-live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    padding: 2px 10px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.1);
+}
+
+.agg-live-dot {
+    width: 6px;
+    height: 6px;
+    background: #22c55e;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.flash-update {
+    animation: flashUpdate 0.8s ease-out;
+}
+
+@keyframes flashUpdate {
+    0% {
+        background-color: rgba(96, 165, 250, 0.2);
+        box-shadow: inset 0 0 15px rgba(96, 165, 250, 0.2);
+    }
+
+    100% {
+        background-color: transparent;
+        box-shadow: inset 0 0 0 rgba(96, 165, 250, 0);
+    }
 }

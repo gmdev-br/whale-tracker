@@ -12,8 +12,31 @@ let lastRenderedUnit = null;
 let lastRenderedInterval = null;
 let lastRenderedRowCount = 0;
 let lastRenderedColorsStr = '';
+let lastRenderedPricesHash = '';
 let aggVirtualScrollManager = null;
 let currentPriceRangeIndex = -1; // Track index for the floating button
+
+/**
+ * Computes a lightweight hash of the prices for coins with active positions.
+ * Used to detect real price changes without forcing a full re-render every tick.
+ */
+function computeRelevantPricesHash(currentPrices, rows) {
+    // Collect unique coins from active rows
+    const activeCoins = new Set();
+    for (const r of rows) {
+        if (r.coin) activeCoins.add(r.coin);
+    }
+    // Always include BTC as reference
+    activeCoins.add('BTC');
+
+    // Build a compact string: coin:price|coin:price|...
+    let hash = '';
+    for (const coin of [...activeCoins].sort()) {
+        const price = currentPrices[coin];
+        if (price != null) hash += `${coin}:${parseFloat(price).toFixed(2)}|`;
+    }
+    return hash;
+}
 
 export function renderAggregationTable(force = false) {
     const aggSection = document.getElementById('aggSectionWrapper');
@@ -39,6 +62,7 @@ export function renderAggregationTable(force = false) {
     // Build current band identity
     const currentBand = btcPrice > 0 ? Math.floor(btcPrice / bandSize) * bandSize : 0;
     const colorsStr = JSON.stringify(aggZoneColors || {});
+    const pricesHash = computeRelevantPricesHash(currentPrices, rows);
 
     // Optimization: Skip rendering if data hasn't significantly changed
     if (!force &&
@@ -46,7 +70,8 @@ export function renderAggregationTable(force = false) {
         lastRenderedUnit === aggVolumeUnit &&
         lastRenderedInterval === bandSize &&
         lastRenderedRowCount === rows.length &&
-        lastRenderedColorsStr === colorsStr) {
+        lastRenderedColorsStr === colorsStr &&
+        lastRenderedPricesHash === pricesHash) {
         return;
     }
 
@@ -63,6 +88,7 @@ export function renderAggregationTable(force = false) {
     lastRenderedInterval = bandSize;
     lastRenderedRowCount = rows.length;
     lastRenderedColorsStr = colorsStr;
+    lastRenderedPricesHash = pricesHash;
 
     const bands = {};
 
@@ -148,6 +174,9 @@ export function renderAggregationTable(force = false) {
         // Top Stats
         const ratioLS = totalShortNotional > 0 ? (totalLongNotional / totalShortNotional).toFixed(3) : '∞';
         const statsHtml = `
+            <div class="agg-live-indicator" style="margin-right:8px">
+                <div class="agg-live-badge"><div class="agg-live-dot"></div>LIVE</div>
+            </div>
             <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:rgba(255,255,255,0.05);border-radius:4px">Long Total <span style="color:#22c55e;font-weight:700;font-family:monospace">${fmtUsdCompact(totalLongNotional)}</span></div>
             <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:rgba(255,255,255,0.05);border-radius:4px">Short Total <span style="color:#ef4444;font-weight:700;font-family:monospace">${fmtUsdCompact(totalShortNotional)}</span></div>
             <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:rgba(255,255,255,0.05);border-radius:4px">Ratio L/S <span style="color:#60a5fa;font-weight:700">${ratioLS}x</span></div>
@@ -156,7 +185,15 @@ export function renderAggregationTable(force = false) {
             <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:rgba(255,255,255,0.05);border-radius:4px">Vácuos <span style="color:#6b7280;font-weight:700">${vacuosCount}</span></div>
             <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:rgba(255,255,255,0.05);border-radius:4px">Total faixas <span style="font-weight:700">${totalBands}</span></div>
         `;
-        document.getElementById('aggStatsBar').innerHTML = statsHtml;
+        const statsBar = document.getElementById('aggStatsBar');
+        if (statsBar) {
+            statsBar.innerHTML = statsHtml;
+            // Visual trigger for update
+            statsBar.classList.remove('flash-update');
+            void statsBar.offsetWidth; // Trigger reflow
+            statsBar.classList.add('flash-update');
+        }
+
 
         // Render rows
         // Render rows using Virtual Scroll
@@ -239,7 +276,7 @@ export function renderAggregationTable(force = false) {
                             zoneColor = domType === 'COMPRA' ? aggZoneColors.buyNormal : aggZoneColors.sellNormal;
                         }
                     }
-                    
+
                     // Update DOM color to match row-level Forte status
                     domColor = domType === 'COMPRA' ? (isForteZone ? aggZoneColors.buyStrong : aggZoneColors.buyNormal) :
                         domType === 'VENDA' ? (isForteZone ? aggZoneColors.sellStrong : aggZoneColors.sellNormal) : '#6b7280';
@@ -249,10 +286,10 @@ export function renderAggregationTable(force = false) {
                 // User Requirement: "linas com destaues por tipo de zona forte ou intensidade forte devem seguir somente um padrao de coloracao"
                 // User Requirement Update: "compra e venda normais devem seguir apenas 1 cor"
                 // User Requirement Update: "seo % de dominacia for menor que 70% a area é tida como contestada e todos os textos devem ser brancos"
-                
+
                 if (isContested) {
-                     colorLong = b.notionalLong > 0 ? '#ffffff' : '#4b5563';
-                     colorShort = b.notionalShort > 0 ? '#ffffff' : '#4b5563';
+                    colorLong = b.notionalLong > 0 ? '#ffffff' : '#4b5563';
+                    colorShort = b.notionalShort > 0 ? '#ffffff' : '#4b5563';
                 } else if (totalNotional >= 10_000_000) {
                     if (domType === 'COMPRA') {
                         // Dominant Buy: Longs get Zone Color (Strong or Normal), Shorts get Gray (Neutral)
@@ -375,8 +412,8 @@ export function renderAggregationTable(force = false) {
                             name: p.displayName || p.address.substring(0, 6) + '...',
                             coin: p.coin,
                             displayEntry: entryCorr.toLocaleString('en-US', { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces }),
-                            displayVol: aggVolumeUnit === 'BTC' 
-                                ? `₿${(btcPrice > 0 ? p.positionValue / btcPrice : 0).toFixed(2)}` 
+                            displayVol: aggVolumeUnit === 'BTC'
+                                ? `₿${(btcPrice > 0 ? p.positionValue / btcPrice : 0).toFixed(2)}`
                                 : fmtUsdCompact(p.positionValue)
                         };
                     });
@@ -392,8 +429,8 @@ export function renderAggregationTable(force = false) {
                             name: p.displayName || p.address.substring(0, 6) + '...',
                             coin: p.coin,
                             displayEntry: entryCorr.toLocaleString('en-US', { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces }),
-                            displayVol: aggVolumeUnit === 'BTC' 
-                                ? `₿${(btcPrice > 0 ? p.positionValue / btcPrice : 0).toFixed(2)}` 
+                            displayVol: aggVolumeUnit === 'BTC'
+                                ? `₿${(btcPrice > 0 ? p.positionValue / btcPrice : 0).toFixed(2)}`
                                 : fmtUsdCompact(p.positionValue)
                         };
                     });
@@ -407,10 +444,10 @@ export function renderAggregationTable(force = false) {
             // Check for multiple of 1000 and 500 in price ranges
             const isRangeMultiple1000 = b.faixaDe % 1000 === 0;
             const isRangeMultiple500 = b.faixaDe % 500 === 0;
-            
+
             let rangeColor = isCurrentPriceRange ? '#fff' : '#d1d5db';
             let rangeWeight = '700';
-            
+
             if (isRangeMultiple1000) {
                 rangeColor = '#fbbf24'; // Gold
                 rangeWeight = '800';
@@ -616,26 +653,26 @@ document.addEventListener('mouseover', (e) => {
             document.body.appendChild(tooltipEl);
 
             const rect = target.getBoundingClientRect();
-            
+
             // Check if mobile
             const isMobile = window.innerWidth <= 768;
-            
+
             if (!isMobile) {
                 // Initial positioning off-screen to measure
                 tooltipEl.style.visibility = 'hidden';
                 tooltipEl.style.top = '0px';
                 tooltipEl.style.left = '0px';
-                
+
                 requestAnimationFrame(() => {
                     const tooltipRect = tooltipEl.getBoundingClientRect();
-                    
+
                     let top = rect.bottom + 10;
                     let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
 
                     // Boundary checks
                     if (left < 10) left = 10;
                     if (left + tooltipRect.width > window.innerWidth - 10) left = window.innerWidth - tooltipRect.width - 10;
-                    
+
                     // Flip to top if not enough space below
                     if (top + tooltipRect.height > window.innerHeight - 10) {
                         top = rect.top - tooltipRect.height - 10;
@@ -649,8 +686,8 @@ document.addEventListener('mouseover', (e) => {
                     requestAnimationFrame(() => tooltipEl.classList.add('visible'));
                 });
             } else {
-                 // Mobile: let CSS handle positioning (centered)
-                 requestAnimationFrame(() => tooltipEl.classList.add('visible'));
+                // Mobile: let CSS handle positioning (centered)
+                requestAnimationFrame(() => tooltipEl.classList.add('visible'));
             }
 
             // Cleanup function
@@ -661,24 +698,24 @@ document.addEventListener('mouseover', (e) => {
                     if (rel === tooltipEl || tooltipEl.contains(rel)) return;
                     if (rel === target || target.contains(rel)) return;
                 }
-                
+
                 // Close tooltip
                 tooltipEl.classList.remove('visible');
                 target.dataset.tooltipActive = 'false';
-                
+
                 // Remove listeners
                 target.removeEventListener('mouseleave', cleanup);
                 tooltipEl.removeEventListener('mouseleave', cleanup);
                 document.removeEventListener('touchstart', handleOutsideClick);
                 document.removeEventListener('click', handleOutsideClick);
-                
+
                 setTimeout(() => {
                     if (tooltipEl.parentNode) {
                         tooltipEl.remove();
                     }
                 }, 200);
             };
-            
+
             const handleOutsideClick = (e) => {
                 // If clicking inside tooltip or target, don't close
                 if (tooltipEl.contains(e.target) || target.contains(e.target)) return;
@@ -687,7 +724,7 @@ document.addEventListener('mouseover', (e) => {
 
             target.addEventListener('mouseleave', cleanup);
             tooltipEl.addEventListener('mouseleave', cleanup);
-            
+
             // Handle clicks outside (for mobile/desktop interaction)
             // Use capture=true for touchstart to catch it early? No, bubbling is fine.
             // Using setTimeout to avoid immediate trigger if the event that opened it propagates

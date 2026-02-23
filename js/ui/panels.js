@@ -240,7 +240,7 @@ export function renderQuotesPanel() {
     const selectedCoins = getSelectedCoins();
     if (selectedCoins.length === 0) {
         panel.style.display = 'none';
-        stopPriceTicker();
+        // Não paramos mais o ticker aqui para manter BTC e debug atualizados globalmente
         return;
     }
 
@@ -338,12 +338,12 @@ export function startPriceTicker() {
             if (data && typeof data === 'object') {
                 const selectedCoins = getSelectedCoins();
                 const currentPrices = getCurrentPrices();
-                
+
                 // DEBUG: Log BTC price update
                 if (data['BTC']) {
                     console.log(`[PriceUpdate] ${new Date().toLocaleTimeString()} - BTC Price: ${data['BTC']} | Total Coins Updated: ${Object.keys(data).length}`);
                 }
-                
+
                 // Update ALL prices to ensure BTC and other reference currencies are up to date
                 Object.keys(data).forEach(coin => {
                     const newPrice = parseFloat(data[coin]);
@@ -364,16 +364,16 @@ export function startPriceTicker() {
                 });
 
                 setCurrentPrices(currentPrices);
-                
+
                 // Now update UI which uses these prices
                 updateQuotesHTML();
 
                 // Update prevPrice for NEXT tick
                 selectedCoins.forEach(coin => {
-                     const newPrice = parseFloat(data[coin]);
-                     if (!isNaN(newPrice)) {
-                         window[`prevPrice_${coin}`] = newPrice;
-                     }
+                    const newPrice = parseFloat(data[coin]);
+                    if (!isNaN(newPrice)) {
+                        window[`prevPrice_${coin}`] = newPrice;
+                    }
                 });
             }
 
@@ -385,7 +385,7 @@ export function startPriceTicker() {
                 const currentPrices = getCurrentPrices();
                 const btcPrice = parseFloat(currentPrices['BTC'] || 0);
                 const activeEntryCurrency = getActiveEntryCurrency();
-                
+
                 // Calculate refPrice based on entry currency (X-axis)
                 let refPrice = btcPrice;
                 if (activeEntryCurrency === 'BTC') {
@@ -403,11 +403,11 @@ export function startPriceTicker() {
                     const showSymbols = getShowSymbols();
                     const sym = showSymbols ? currencyMeta.symbol : '';
                     scatterChart.options.plugins.btcPriceLabel.text = `BTC: ${sym}${refPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                    
+
                     // DEBUG: Chart update
                     console.log(`[ChartUpdate] Scatter refPrice: ${refPrice} (Entry Currency: ${activeEntryCurrency})`);
                 }
-                
+
                 scatterChart.update(); // Use default animation mode to ensure full redraw if needed
             }
 
@@ -440,17 +440,17 @@ export function startPriceTicker() {
                     const showSymbols = getShowSymbols();
                     const sym = showSymbols ? currencyMeta.symbol : '';
                     liqChart.options.plugins.btcPriceLabel.text = `BTC: ${sym}${refPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                    
+
                     // DEBUG: LiqChart update
                     console.log(`[ChartUpdate] LiqChart refPrice: ${refPrice}`);
                 }
-                
+
                 liqChart.update(); // Use default animation mode
             }
 
             // Update aggregation table highlight if active
             renderAggregationTable();
-            
+
             // Update main table with new prices
             renderTable();
         } catch (e) {

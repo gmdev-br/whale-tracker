@@ -11,7 +11,7 @@ import {
 import { loadTableData } from '../storage/data.js';
 import { chartPlugins, chartOptions, chartMechanics } from '../charts/config.js';
 import { saveSettings, loadSettings } from '../storage/settings.js';
-import { updateRankingPanel, renderQuotesPanel, removeCoin as removeCoinFn, handlePriceModeClick, updatePriceModeUI } from '../ui/panels.js';
+import { updateRankingPanel, renderQuotesPanel, removeCoin as removeCoinFn, handlePriceModeClick, updatePriceModeUI, startPriceTicker } from '../ui/panels.js';
 import { renderScatterPlot, getScatterChart } from '../charts/scatter.js';
 import { renderLiqScatterPlot, getLiqChartInstance } from '../charts/liquidation.js';
 import { updateStats, renderTable, renderTableImmediate } from '../ui/table.js';
@@ -767,6 +767,8 @@ function initializePanels() {
     renderQuotesPanel();
     updatePriceModeUI();
     initColumnWidthControl();
+    // Iniciar o ticker de preços global para garantir atualizações do BTC e Debug Panel
+    startPriceTicker();
 }
 
 async function loadInitialState() {
