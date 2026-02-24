@@ -484,9 +484,9 @@ export function renderAggregationTable(force = false) {
             </div>`;
 
             const newContent = `
-                <td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; font-weight:${rangeWeight}; color:${rangeColor}">
+                <td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; font-weight:${rangeWeight}; color:${rangeColor}; position: relative;">
                     ${starIndicator}
-                    ${isCurrentPriceRange ? `<div style="font-size:10px; color:${aggHighlightColor}; margin-bottom:2px">BTC $${btcPrice.toLocaleString()}</div>` : ''}
+                    ${isCurrentPriceRange ? `<div style="font-size:10px; color:${aggHighlightColor}; position:absolute; top:-6px; right:4px; line-height:1; background:#0a0e1a; padding:0 2px; border-radius:2px;">$${btcPrice.toLocaleString()}</div>` : ''}
                     $${b.faixaDe.toLocaleString()}
                 </td>
                 <td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; color:${isRangeMultiple1000 || isRangeMultiple500 ? rangeColor : '#9ca3af'}; font-weight:${isRangeMultiple1000 ? '800' : (isRangeMultiple500 ? '700' : '400')}">$${b.faixaAte.toLocaleString()}</td>

@@ -77,25 +77,35 @@ export class VirtualScroll {
 
     setData(data) {
         this.data = data;
+
+        // Update height estimation using currently known row height
         this.totalHeight = data.length * this.rowHeight;
-        this.rowHeightMeasured = false; // Reset so we re-measure on new data
+
         this.updateVisibleRange();
         this.render(true); // Force update content
-        // First pass: re-render after next animation frame
-        requestAnimationFrame(() => {
-            this._calibrateRowHeight();
-            this.updateVisibleRange();
-            this.render(true);
-        });
-        // Second pass: CSS fonts and custom styles can take slightly longer
-        // This guarantees row height is correct even on slower devices
-        setTimeout(() => {
-            if (!this.rowHeightMeasured) {
+
+        // Only run calibration passes if we haven't successfully measured the row height yet!
+        // Doing this on every setData in a real-time table causes severe scroll jumping.
+        if (!this.rowHeightMeasured) {
+            // First pass: re-render after next animation frame
+            requestAnimationFrame(() => {
                 this._calibrateRowHeight();
-                this.updateVisibleRange();
-                this.render(true);
-            }
-        }, 250);
+                if (this.rowHeightMeasured) {
+                    this.updateVisibleRange();
+                    this.render(true);
+                }
+            });
+            // Second pass: CSS fonts and custom styles can take slightly longer
+            setTimeout(() => {
+                if (!this.rowHeightMeasured) {
+                    this._calibrateRowHeight();
+                    if (this.rowHeightMeasured) {
+                        this.updateVisibleRange();
+                        this.render(true);
+                    }
+                }
+            }, 250);
+        }
     }
 
     _calibrateRowHeight() {
