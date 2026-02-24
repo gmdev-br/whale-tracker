@@ -674,12 +674,25 @@
                 <div id="aggStatsBar" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
                     <!-- Filled by JS -->
                 </div>
-                <div class="agg-unit-toggle"
-                    style="display:flex; gap:4px; align-items:center; background:rgba(255,255,255,0.05); padding:2px; border-radius:6px; border:1px solid rgba(255,255,255,0.1)">
-                    <button class="tab active js-agg-volume-unit-tab" data-unit="USD"
-                        style="padding:4px 8px; font-size:10px; height:24px; border-radius:4px">USD</button>
-                    <button class="tab js-agg-volume-unit-tab" data-unit="BTC"
-                        style="padding:4px 8px; font-size:10px; height:24px; border-radius:4px">BTC</button>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <div
+                        style="display:flex; gap:4px; align-items:center; background:rgba(255,255,255,0.05); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.1)">
+                        <label style="font-size:10px; color:var(--text-muted)">Range:</label>
+                        <input type="number" id="aggMinPrice" placeholder="Piso"
+                            style="width:70px; height:24px; font-size:11px; background:rgba(0,0,0,0.2); border:1px solid var(--border-color); color:var(--text); padding:0 4px; border-radius:4px"
+                            title="Preço mínimo (Piso) para a tabela de agregação">
+                        <span style="color:var(--text-muted)">-</span>
+                        <input type="number" id="aggMaxPrice" placeholder="Teto"
+                            style="width:70px; height:24px; font-size:11px; background:rgba(0,0,0,0.2); border:1px solid var(--border-color); color:var(--text); padding:0 4px; border-radius:4px"
+                            title="Preço máximo (Teto) para a tabela de agregação">
+                    </div>
+                    <div class="agg-unit-toggle"
+                        style="display:flex; gap:4px; align-items:center; background:rgba(255,255,255,0.05); padding:2px; border-radius:6px; border:1px solid rgba(255,255,255,0.1)">
+                        <button class="tab active js-agg-volume-unit-tab" data-unit="USD"
+                            style="padding:4px 8px; font-size:10px; height:24px; border-radius:4px">USD</button>
+                        <button class="tab js-agg-volume-unit-tab" data-unit="BTC"
+                            style="padding:4px 8px; font-size:10px; height:24px; border-radius:4px">BTC</button>
+                    </div>
                 </div>
             </div>
             <div id="agg-table-section">
@@ -691,6 +704,12 @@
                                 <th class="col-agg-range">Faixa<br>Até ($)</th>
                                 <th class="col-agg-liq" title="Weighted Average Liquidation Price (Correlated)">Liq
                                     Price<br>Corr ($)</th>
+                                <th class="col-agg-val"
+                                    title="Total Vol of LONG positions falling in this Liquidation Price band">Liq
+                                    Vol<br>Long</th>
+                                <th class="col-agg-val"
+                                    title="Total Vol of SHORT positions falling in this Liquidation Price band">Liq
+                                    Vol<br>Short</th>
                                 <th class="col-agg-qty">Qtd<br>Long</th>
                                 <th class="col-agg-val">Notional<br>Long</th>
                                 <th class="col-agg-qty">Qtd<br>Short</th>
@@ -706,7 +725,7 @@
                         </thead>
                         <tbody id="aggTableBody">
                             <tr>
-                                <td colspan="14" class="empty-cell">Carregando...</td>
+                                <td colspan="16" class="empty-cell">Carregando...</td>
                             </tr>
                         </tbody>
                     </table>

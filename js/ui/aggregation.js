@@ -2,10 +2,11 @@
 // LIQUID GLASS — Aggregation Table
 // ═══════════════════════════════════════════════════════════
 
-import { getDisplayedRows, getCurrentPrices, getFxRates, getActiveEntryCurrency, getAggInterval, getAggVolumeUnit, getShowAggSymbols, getAggZoneColors, getAggHighlightColor, getDecimalPlaces, getTooltipDelay } from '../state.js';
+import { getDisplayedRows, getCurrentPrices, getFxRates, getActiveEntryCurrency, getAggInterval, getAggVolumeUnit, getShowAggSymbols, getAggZoneColors, getAggHighlightColor, getDecimalPlaces, getTooltipDelay, getAggMinPrice, getAggMaxPrice, setAggMinPrice, setAggMaxPrice, setAggVolumeUnit } from '../state.js';
 import { getCorrelatedEntry, getCorrelatedPrice } from '../utils/currency.js';
 import { fmtUSD, fmtCcy } from '../utils/formatters.js';
 import { enableVirtualScroll } from '../utils/virtualScroll.js';
+import { saveSettings } from '../storage/settings.js';
 import { CURRENCY_META } from '../config.js';
 
 let lastRenderedBand = null;
@@ -16,6 +17,7 @@ let lastRenderedColorsStr = '';
 let lastRenderedPricesHash = '';
 let aggVirtualScrollManager = null;
 let currentPriceRangeIndex = -1; // Track index for the floating button
+let aggControlsInitialized = false; // Flag to ensure event listeners are added only once
 
 /**
  * Computes a lightweight hash of the prices for coins with active positions.
@@ -48,6 +50,58 @@ export function renderAggregationTable(force = false) {
         return;
     }
 
+    // Initialize controls only once
+    if (!aggControlsInitialized) {
+        // 1. Aggregation Interval Tabs
+        const intervalTabs = document.querySelectorAll('#aggIntervalTabs .tab-button');
+        if (intervalTabs) {
+            intervalTabs.forEach(t => t.addEventListener('click', () => {
+                const interval = parseInt(t.dataset.interval);
+                setAggInterval(interval);
+                intervalTabs.forEach(btn => btn.classList.toggle('active', btn === t));
+                renderAggregationTable(true);
+                saveSettings();
+            }));
+        }
+
+        // 2. Aggregation Volume Unit Tabs
+        const unitTabs = document.querySelectorAll('#aggVolumeUnitTabs .tab-button');
+        if (unitTabs) {
+            unitTabs.forEach(t => t.addEventListener('click', () => {
+                const unit = t.dataset.unit;
+                setAggVolumeUnit(unit);
+                unitTabs.forEach(btn => btn.classList.toggle('active', btn === t));
+                renderAggregationTable(true);
+                saveSettings();
+            }));
+        }
+
+        // 3. Local Range Controls
+        const minInput = document.getElementById('aggMinPrice');
+        const maxInput = document.getElementById('aggMaxPrice');
+
+        if (minInput && maxInput) {
+            const updateRange = () => {
+                const min = parseFloat(minInput.value) || 0;
+                const max = parseFloat(maxInput.value) || 0;
+                setAggMinPrice(min);
+                setAggMaxPrice(max);
+                renderAggregationTable(true);
+                saveSettings();
+            };
+
+            minInput.addEventListener('change', updateRange);
+            maxInput.addEventListener('change', updateRange);
+
+            // Also update on Enter
+            const onEnter = (e) => { if (e.key === 'Enter') updateRange(); };
+            minInput.addEventListener('keydown', onEnter);
+            maxInput.addEventListener('keydown', onEnter);
+        }
+
+        aggControlsInitialized = true;
+    }
+
     const rows = getDisplayedRows();
     const currentPrices = getCurrentPrices();
     const fxRates = getFxRates();
@@ -57,7 +111,7 @@ export function renderAggregationTable(force = false) {
     const aggZoneColors = getAggZoneColors();
     const aggHighlightColor = getAggHighlightColor();
     const decimalPlaces = getDecimalPlaces();
-    const bandSize = getAggInterval();
+    const bandSize = Math.max(1, getAggInterval()); // Safety: Ensure bandSize is at least 1
     const btcPrice = currentPrices['BTC'] ? parseFloat(currentPrices['BTC']) : 0;
 
     // Build current band identity
@@ -77,7 +131,7 @@ export function renderAggregationTable(force = false) {
     }
 
     if (!rows || rows.length === 0) {
-        document.getElementById('aggTableBody').innerHTML = '<tr><td colspan="14" class="empty-cell">Sem dados disponíveis.</td></tr>';
+        document.getElementById('aggTableBody').innerHTML = '<tr><td colspan="16" class="empty-cell">Sem dados disponíveis.</td></tr>';
         document.getElementById('aggStatsBar').innerHTML = '';
         lastRenderedRowCount = 0;
         return;
@@ -98,62 +152,122 @@ export function renderAggregationTable(force = false) {
     let posCount = rows.length;
     let bandsWithPosCount = 0;
 
-    // Build bands map
+    // 1. Determine the range
+    let minEntryBand = getAggMinPrice();
+    let maxEntryBand = getAggMaxPrice();
+    let isAutoRange = false;
+
+    if (!minEntryBand || !maxEntryBand || minEntryBand <= 0 || maxEntryBand <= 0 || minEntryBand >= maxEntryBand) {
+        // Fallback to entry-based auto range if local range is invalid or not set
+        minEntryBand = Infinity;
+        maxEntryBand = -Infinity;
+        isAutoRange = true;
+
+        for (const r of rows) {
+            const entryCcy = getCorrelatedEntry(r, activeEntryCurrency, currentPrices, fxRates);
+            if (!isNaN(entryCcy) && entryCcy > 0) {
+                const b = Math.floor(entryCcy / bandSize) * bandSize;
+                if (b < minEntryBand) minEntryBand = b;
+                if (b > maxEntryBand) maxEntryBand = b;
+            }
+        }
+    } else {
+        // Enforce band alignment for local settings
+        minEntryBand = Math.floor(minEntryBand / bandSize) * bandSize;
+        maxEntryBand = Math.floor(maxEntryBand / bandSize) * bandSize;
+    }
+
+    if (minEntryBand === Infinity || minEntryBand === -Infinity) {
+        const statsBar = document.getElementById('aggStatsBar');
+        if (statsBar) statsBar.innerHTML = '';
+        document.getElementById('aggTableBody').innerHTML = '<tr><td colspan="16" class="empty-cell">Sem dados disponíveis.</td></tr>';
+        return;
+    }
+
+    // 2. Safety Truncate (Anti-Freeze)
+    const MAX_ALLOWED_BANDS = 5000;
+    let totalBandsCount = Math.floor((maxEntryBand - minEntryBand) / bandSize) + 1;
+    if (totalBandsCount > MAX_ALLOWED_BANDS) {
+        console.warn(`[AggTable] Excessive range detected (${totalBandsCount} bands). Truncating around current price.`);
+        const centerBand = currentBand > 0 ? currentBand : (maxEntryBand + minEntryBand) / 2;
+        const halfRange = Math.floor(MAX_ALLOWED_BANDS / 2) * bandSize;
+        minEntryBand = Math.max(minEntryBand, Math.floor((centerBand - halfRange) / bandSize) * bandSize);
+        maxEntryBand = Math.min(maxEntryBand, Math.floor((centerBand + halfRange) / bandSize) * bandSize);
+    }
+
+    // 3. Pre-populate bands map with Entry Price Range
+    // This ensures teto/piso is correctly fixed to entries
+    for (let b = minEntryBand; b <= maxEntryBand; b += bandSize) {
+        bands[b] = {
+            faixaDe: b,
+            faixaAte: b + bandSize,
+            qtdLong: 0,
+            notionalLong: 0,
+            qtdShort: 0,
+            notionalShort: 0,
+            sumLiqNotionalLong: 0,
+            sumLiqNotionalShort: 0,
+            liqVolLong: 0,
+            liqVolShort: 0,
+            ativosLong: new Set(),
+            ativosShort: new Set(),
+            positionsLong: [],
+            positionsShort: [],
+            isEmpty: true // Default to true, will be cleared if entry is found
+        };
+    }
+
+    // 4. Populate volumes
     for (const r of rows) {
-        // Calculate correlated entry price
+        // Entry Price logic
         const entryCcy = getCorrelatedEntry(r, activeEntryCurrency, currentPrices, fxRates);
-
-        if (isNaN(entryCcy) || entryCcy <= 0) continue;
-
-        // Determine band
-        const bandDown = Math.floor(entryCcy / bandSize) * bandSize;
-
-        if (!bands[bandDown]) {
-            bands[bandDown] = {
-                faixaDe: bandDown,
-                faixaAte: bandDown + bandSize,
-                qtdLong: 0,
-                notionalLong: 0,
-                qtdShort: 0,
-                notionalShort: 0,
-                sumLiqNotionalLong: 0,
-                sumLiqNotionalShort: 0,
-                ativosLong: new Set(),
-                ativosShort: new Set(),
-                positionsLong: [],
-                positionsShort: []
-            };
+        if (!isNaN(entryCcy) && entryCcy > 0) {
+            const bandDown = Math.floor(entryCcy / bandSize) * bandSize;
+            const b = bands[bandDown];
+            if (b) {
+                b.isEmpty = false; // Has entry volume
+                const val = r.positionValue;
+                if (r.side === 'long') {
+                    b.qtdLong++;
+                    b.notionalLong += val;
+                    if (r.liquidationPx > 0) {
+                        const liqPriceCorr = getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
+                        b.sumLiqNotionalLong += (liqPriceCorr * val);
+                    }
+                    b.ativosLong.add(r.coin);
+                    b.positionsLong.push(r);
+                    totalLongNotional += val;
+                } else {
+                    b.qtdShort++;
+                    b.notionalShort += val;
+                    if (r.liquidationPx > 0) {
+                        const liqPriceCorr = getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
+                        b.sumLiqNotionalShort += (liqPriceCorr * val);
+                    }
+                    b.ativosShort.add(r.coin);
+                    b.positionsShort.push(r);
+                    totalShortNotional += val;
+                }
+            }
         }
 
-        const b = bands[bandDown];
-        const val = r.positionValue; // USD value
-
-        if (r.side === 'long') {
-            b.qtdLong++;
-            b.notionalLong += val;
-            if (r.liquidationPx > 0) {
-                const liqPriceCorr = getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
-                b.sumLiqNotionalLong += (liqPriceCorr * val);
+        // Liquidation Volume logic (Independent of entry band, but restricted to table range)
+        if (r.liquidationPx > 0) {
+            const liqPriceCorr = getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
+            if (isFinite(liqPriceCorr) && liqPriceCorr > 0) {
+                const liqBand = Math.floor(liqPriceCorr / bandSize) * bandSize;
+                const lb = bands[liqBand];
+                if (lb) {
+                    if (r.side === 'long') lb.liqVolLong += r.positionValue;
+                    else lb.liqVolShort += r.positionValue;
+                }
             }
-            b.ativosLong.add(r.coin);
-            b.positionsLong.push(r);
-            totalLongNotional += val;
-        } else if (r.side === 'short') {
-            b.qtdShort++;
-            b.notionalShort += val;
-            if (r.liquidationPx > 0) {
-                const liqPriceCorr = getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
-                b.sumLiqNotionalShort += (liqPriceCorr * val);
-            }
-            b.ativosShort.add(r.coin);
-            b.positionsShort.push(r);
-            totalShortNotional += val;
         }
     }
 
     // Convert bands to array and sort descending
     const bandArray = Object.values(bands).sort((a, b) => b.faixaDe - a.faixaDe);
-    bandsWithPosCount = bandArray.length;
+    bandsWithPosCount = bandArray.filter(b => !b.isEmpty).length;
 
     // Calculate max and min bands to fill "vacuos" (empty bands)
     if (bandArray.length > 0) {
@@ -162,25 +276,8 @@ export function renderAggregationTable(force = false) {
         const totalBands = Math.floor((maxBand - minBand) / bandSize) + 1;
 
         // Create full array including vacuos
-        const fullBandArray = [];
-        let vacuosCount = 0;
-
-        for (let base = maxBand; base >= minBand; base -= bandSize) {
-            fullBandArray.push(bands[base] || {
-                faixaDe: base,
-                faixaAte: base + bandSize,
-                qtdLong: 0,
-                notionalLong: 0,
-                qtdShort: 0,
-                notionalShort: 0,
-                ativosLong: new Set(),
-                ativosShort: new Set(),
-                positionsLong: [],
-                positionsShort: [],
-                isEmpty: true
-            });
-            if (!bands[base]) vacuosCount++;
-        }
+        const fullBandArray = bandArray; // Already pre-populated and sorted
+        let vacuosCount = bandArray.filter(b => b.isEmpty).length;
 
         // Top Stats
         const ratioLS = totalShortNotional > 0 ? (totalLongNotional / totalShortNotional).toFixed(3) : '∞';
@@ -483,6 +580,22 @@ export function renderAggregationTable(force = false) {
                 ${b.notionalShort > 0 ? `<div>S: ${formatLiq(avgLiqShort, colorShort)}</div>` : ''}
             </div>`;
 
+            const fmtVal = (v) => {
+                if (aggVolumeUnit === 'BTC' && btcPrice > 0) {
+                    const btcVal = v / btcPrice;
+                    const sym = showAggSymbols ? '₿' : '';
+                    return sym + (btcVal >= 1000 ? (btcVal / 1000).toFixed(1) + 'K' : btcVal.toFixed(2));
+                }
+                return fmtUsdCompact(v, showAggSymbols);
+            };
+
+            const liqRenderer = (val, type) => {
+                if (val === 0) return '<span class="muted" style="opacity:0.4">—</span>';
+                const color = type === 'long' ? aggZoneColors.buyNormal : aggZoneColors.sellNormal;
+                const weight = val >= 30_000_000 ? 'font-weight:bold;' : '';
+                return `<span style="color:${color};${weight}">${fmtVal(val)}</span>`;
+            };
+
             const newContent = `
                 <td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; font-weight:${rangeWeight}; color:${rangeColor}; position: relative;">
                     ${starIndicator}
@@ -491,6 +604,8 @@ export function renderAggregationTable(force = false) {
                 </td>
                 <td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; color:${isRangeMultiple1000 || isRangeMultiple500 ? rangeColor : '#9ca3af'}; font-weight:${isRangeMultiple1000 ? '800' : (isRangeMultiple500 ? '700' : '400')}">$${b.faixaAte.toLocaleString()}</td>
                 <td class="col-agg-liq" style="font-family:monospace; vertical-align:middle">${liqHtml}</td>
+                <td class="mono col-agg-val">${liqRenderer(b.liqVolLong, 'long')}</td>
+                <td class="mono col-agg-val">${liqRenderer(b.liqVolShort, 'short')}</td>
                 <td class="col-agg-qty" style="color:${longCol}; text-align:center">${formatQty(b.qtdLong)}</td>
                 <td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="color:${longCol}; font-family:monospace; font-weight:${b.notionalLong > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalLong)}</td>
                 <td class="col-agg-qty" style="color:${shortCol}; text-align:center">${formatQty(b.qtdShort)}</td>
@@ -514,7 +629,7 @@ export function renderAggregationTable(force = false) {
         aggVirtualScrollManager.renderRow = rowRenderer;
         aggVirtualScrollManager.setData(fullBandArray);
     } else {
-        document.getElementById('aggTableBody').innerHTML = '<tr><td colspan="14" class="empty-cell">Sem dados disponíveis.</td></tr>';
+        document.getElementById('aggTableBody').innerHTML = '<tr><td colspan="16" class="empty-cell">Sem dados disponíveis.</td></tr>';
     }
 }
 

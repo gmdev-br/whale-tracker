@@ -58,6 +58,8 @@ let minBtcVolume = 0; // Volume BTC minimum for highlighting
 let aggInterval = 50; // BTC price interval for aggregation (e.g. 50, 100)
 let aggTableHeight = 450; // default height for the aggregation table container
 let aggVolumeUnit = 'USD'; // 'USD' or 'BTC'
+let aggMinPrice = 0;       // Local floor for aggregation table
+let aggMaxPrice = 0;       // Local ceiling for aggregation table
 
 // Custom colors for leverage categories
 let leverageColors = {
@@ -149,6 +151,8 @@ export const getState = () => ({
     aggInterval,
     aggTableHeight,
     aggVolumeUnit,
+    aggMinPrice,
+    aggMaxPrice,
     lastSeenAccountValues,
     whaleMeta,
     isZenMode,
@@ -204,6 +208,8 @@ export const setState = (updates) => {
         aggInterval,
         aggTableHeight,
         aggVolumeUnit,
+        aggMinPrice,
+        aggMaxPrice,
         lastSeenAccountValues,
         whaleMeta,
         isZenMode,
@@ -219,8 +225,8 @@ export const setDisplayedRows = (value) => { displayedRows = value; };
 export const setScanning = (value) => { scanning = value; };
 export const setIsPaused = (value) => { isPaused = value; };
 export const setLoadedCount = (value) => { loadedCount = value; };
-export const setCurrentPrices = (value) => { 
-    currentPrices = value; 
+export const setCurrentPrices = (value) => {
+    currentPrices = value;
     priceUpdateVersion++;
 };
 export const getPriceUpdateVersion = () => priceUpdateVersion;
@@ -262,6 +268,8 @@ export const setMinBtcVolume = (value) => { minBtcVolume = value; };
 export const setAggInterval = (value) => { aggInterval = value; };
 export const setAggTableHeight = (value) => { aggTableHeight = value; };
 export const setAggVolumeUnit = (value) => { aggVolumeUnit = value; };
+export const setAggMinPrice = (value) => { aggMinPrice = value; };
+export const setAggMaxPrice = (value) => { aggMaxPrice = value; };
 export const setAggZoneColors = (value) => { aggZoneColors = value; };
 export const setAggHighlightColor = (value) => { aggHighlightColor = value; };
 export const setIsZenMode = (value) => { isZenMode = value; };
@@ -315,6 +323,8 @@ export const getMinBtcVolume = () => minBtcVolume;
 export const getAggInterval = (value) => aggInterval;
 export const getAggTableHeight = (value) => aggTableHeight;
 export const getAggVolumeUnit = () => aggVolumeUnit;
+export const getAggMinPrice = () => aggMinPrice;
+export const getAggMaxPrice = () => aggMaxPrice;
 export const getAggZoneColors = () => aggZoneColors;
 export const getAggHighlightColor = () => aggHighlightColor;
 
