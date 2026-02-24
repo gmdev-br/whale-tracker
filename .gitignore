@@ -13,6 +13,8 @@ build/
 *.swp
 *.swo
 *~
+.kilocode
+.kilocodemodes
 
 # OS
 .DS_Store
@@ -33,3 +35,32 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+ENV/
+
+# Project specific
+# Local data files
+*.json
+!manifest.json
+!package.json
+
+# Backup files
+*_backup.js
+*_backup.*
+
+# Test output files
+inspect_out.txt
+
+# Development/test files
+test_*.py
+inspect_*.py
+validate_*.py
+test_*.html
