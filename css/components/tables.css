@@ -65,16 +65,7 @@ thead tr {
     border-bottom: 1px solid var(--glass-border);
 }
 
-thead tr::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent 0%, var(--glass-highlight) 50%, transparent 100%);
-    opacity: 0.5;
-}
+/* thead tr::before removido para prevenir bug de injeção de coluna no thead */
 
 th {
     padding: 10px 14px;

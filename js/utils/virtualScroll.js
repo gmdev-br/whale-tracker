@@ -128,7 +128,8 @@ export class VirtualScroll {
             topSpacer.className = 'vs-top-spacer';
             topSpacer.style.border = 'none';
             topSpacer.style.background = 'transparent';
-            topSpacer.innerHTML = '<td colspan="100" style="padding: 0; border: none;"></td>';
+            // Set colspan realistic enough to cover max columns but not break auto layouts (e.g 20)
+            topSpacer.innerHTML = '<td colspan="25" style="padding: 0; border: none; height: 0;"></td>';
             this.tbody.insertBefore(topSpacer, this.tbody.firstChild);
         }
 
@@ -138,7 +139,7 @@ export class VirtualScroll {
             bottomSpacer.className = 'vs-bottom-spacer';
             bottomSpacer.style.border = 'none';
             bottomSpacer.style.background = 'transparent';
-            bottomSpacer.innerHTML = '<td colspan="100" style="padding: 0; border: none;"></td>';
+            bottomSpacer.innerHTML = '<td colspan="25" style="padding: 0; border: none; height: 0;"></td>';
             this.tbody.appendChild(bottomSpacer);
         }
 
@@ -178,21 +179,21 @@ export class VirtualScroll {
             if (rowData) {
                 // We extract just the inner content of the tr string (everything between <tr...> and </tr>)
                 const fullHtml = rowData.html || this.renderRow(rowData, rowIndex);
-                
+
                 // Use robust DOM parsing instead of brittle regex
                 tempTemplate.innerHTML = fullHtml.trim();
                 const sourceTr = tempTemplate.content.firstElementChild;
-                
+
                 if (sourceTr) {
                     // Check if update is needed
                     if (forceUpdate || tr.dataset.sourceIndex !== String(rowIndex)) {
                         // Copy attributes (class, style, etc.)
                         tr.className = sourceTr.className;
                         tr.style.cssText = sourceTr.style.cssText;
-                        
+
                         // Copy inner HTML (cells)
                         tr.innerHTML = sourceTr.innerHTML;
-                        
+
                         // Track index
                         tr.dataset.sourceIndex = String(rowIndex);
                     }
@@ -216,15 +217,15 @@ export class VirtualScroll {
     scrollToIndex(index) {
         const tableContainer = this.tbody.closest('.table-wrap');
         if (!tableContainer) return;
-        
+
         const containerHeight = tableContainer.offsetHeight;
         const rowTop = index * this.rowHeight;
         const centeredTop = rowTop - (containerHeight / 2) + (this.rowHeight / 2);
-        
+
         // Clamp values to valid scroll range
         const maxScroll = this.totalHeight - containerHeight;
         const clampedTop = Math.max(0, Math.min(centeredTop, maxScroll));
-        
+
         tableContainer.scrollTop = clampedTop;
     }
 
@@ -256,7 +257,7 @@ export function enableVirtualScroll(tbodyId = 'tableBody', options = {}) {
     const renderFn = (rows, rowRenderer) => {
         // Update renderer if provided
         if (rowRenderer) currentRenderer = rowRenderer;
-        
+
         // Use stored renderer if not provided
         const renderer = rowRenderer || currentRenderer;
         if (!renderer) {
