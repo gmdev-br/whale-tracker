@@ -173,7 +173,19 @@ function renderAggregationTableBase(options = {}) {
     );
 
     // Convert bands to array and sort descending
-    const bandArray = Object.values(bands).sort((a, b) => b.faixaDe - a.faixaDe);
+    let bandArray = Object.values(bands).sort((a, b) => b.faixaDe - a.faixaDe);
+
+    // Filtro para tabela resumida: mostrar apenas pontos destacados
+    if (isResumida) {
+        bandArray = bandArray.filter(b => {
+            // Remove vácuos
+            if (b.isEmpty) return false;
+            
+            // Remove intensidade fraca (menos de 10M)
+            const totalNotional = b.notionalLong + b.notionalShort;
+            return totalNotional >= 10_000_000;  // Intensidade >= MEDIA
+        });
+    }
 
     if (bandArray.length === 0) {
         const statsBar = document.getElementById(statsBarId);
