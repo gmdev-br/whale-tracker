@@ -626,7 +626,7 @@ function setupEventListeners() {
             }
         });
         display.addEventListener('input', (e) => {
-            renderColumnDropdown(e.target.value);
+            renderColumnDropdownFn(e.target.value);
         });
     });
 

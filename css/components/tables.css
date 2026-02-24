@@ -1,14 +1,16 @@
 /* ═══════════════════════════════════════════════════════════
-   LIQUID GLASS — Tables
+   LIQUID GLASS — Tables (Enhanced)
    ═══════════════════════════════════════════════════════════ */
 
 /* ── Table Container ── */
 .table-wrap {
     overflow-x: auto;
     overflow-anchor: none;
-    /* Prevents scroll jumps when virtual scroll spacers resize */
     background: transparent;
     -webkit-overflow-scrolling: touch;
+    /* Subtle border for definition */
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: var(--r-sm, 8px);
 }
 
 /* ── Table ── */
@@ -54,23 +56,24 @@ tbody tr {
 }
 
 thead tr {
-    /* Optimized background - less transparency, no backdrop-filter */
-    background: #0a0e1a;
-    /* background: linear-gradient(180deg, rgba(7, 12, 26, 0.90) 0%, rgba(7, 12, 26, 0.75) 100%); */
-    /* backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur); */
+    /* Gradient header with depth - no repaint cost */
+    background: linear-gradient(180deg, 
+        rgba(15, 23, 42, 0.98) 0%, 
+        rgba(10, 14, 26, 0.92) 100%);
     position: sticky;
     top: 0;
     z-index: var(--z-glass-elevated);
     border-bottom: 1px solid var(--glass-border);
+    /* Subtle shadow for depth - GPU accelerated */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* thead tr::before removido para prevenir bug de injeção de coluna no thead */
 
 th {
-    padding: 10px 14px;
+    padding: 12px 14px;
     text-align: left;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.6px;
@@ -86,15 +89,23 @@ th {
     min-height: 44px;
     display: table-cell;
     vertical-align: middle;
+    /* Subtle text shadow for depth */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 /* Mobile table header adjustments */
 @media (max-width: 767px) {
     th {
-        padding: 10px 6px;
+        padding: 10px 8px;
         font-size: 10px;
-        min-width: 80px;
+        min-width: 70px;
         text-align: left;
+        font-weight: 600;
+        color: #9ca3af; /* Brighter on mobile for readability */
+    }
+
+    thead tr {
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
     }
 }
 
@@ -119,6 +130,13 @@ th {
     -moz-user-select: none;
     -ms-user-select: none;
     pointer-events: auto;
+}
+
+/* Thinner resizer on mobile */
+@media (max-width: 767px) {
+    .resizer {
+        width: 4px;
+    }
 }
 
 /* Disable pointer events on th when hovering over resizer */
@@ -150,6 +168,12 @@ th.dragging {
     background: rgba(156, 163, 175, 0.2);
 }
 
+/* Highlight entire column during drag */
+td.column-dragging {
+    background: rgba(96, 165, 250, 0.15) !important;
+    transition: background-color 0.15s ease;
+}
+
 th.drag-over {
     border-left: 2px solid var(--accent);
 }
@@ -161,23 +185,23 @@ th.drag-over {
 
 /* ── Table Header States ── */
 th:hover {
-    color: var(--text);
+    color: #e2e8f4;
 }
 
 th.sorted {
-    color: #9ca3af;
+    color: #cbd5e1;
 }
 
 th::after {
     content: " ↕";
     opacity: 0;
-    font-size: 10px;
+    font-size: 9px;
     margin-left: 4px;
     transition: opacity 0.2s;
 }
 
 th:hover::after {
-    opacity: 0.3;
+    opacity: 0.4;
 }
 
 th.sorted::after {
@@ -186,11 +210,28 @@ th.sorted::after {
 }
 
 th.sorted-asc::after {
-    content: " ▲";
+    content: " ↑";
 }
 
 th.sorted-desc::after {
-    content: " ▼";
+    content: " ↓";
+}
+
+/* Sort indicator icon styling */
+.sort-icon {
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 8px;
+    opacity: 0.5;
+}
+
+th:hover .sort-icon {
+    opacity: 0.8;
+}
+
+th.sorted .sort-icon {
+    opacity: 1;
+    color: var(--accent);
 }
 
 /* ── Table Body ── */
@@ -198,54 +239,102 @@ tbody tr {
     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
     transition: background-color 0.15s ease;
     position: relative;
-    /* content-visibility: auto; */
-    /* Experimental, might help */
+    /* Subtle gradient for depth - GPU only */
+    background: linear-gradient(90deg,
+        rgba(10, 14, 26, 0.6) 0%,
+        rgba(10, 14, 26, 0.4) 100%);
 }
 
-/* Shimmer effect disabled for performance */
-/*
-tbody tr::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: var(--glass-shimmer);
-    transition: left 0.6s ease;
-    pointer-events: none;
-    opacity: 0;
+/* Zebra striping - very subtle */
+tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.018);
 }
-
-tbody tr:hover::before {
-    left: 100%;
-    opacity: 1;
-}
-*/
 
 tbody tr:active {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08);
+    transform: scale(1.001); /* Subtle feedback - GPU accelerated */
 }
 
 tbody tr:hover {
-    background: rgba(255, 255, 255, 0.06);
-    /* box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15); */
+    background: linear-gradient(90deg,
+        rgba(156, 163, 175, 0.08) 0%,
+        rgba(156, 163, 175, 0.05) 100%);
+    /* Left border indicator - no repaint */
+    box-shadow: inset 3px 0 0 var(--accent, #9ca3af);
 }
 
+/* ── Table Body Cells ── */
 td {
     padding: 10px 14px;
     vertical-align: middle;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    /* Monospace for numbers - tabular nums prevent layout shift */
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
 }
 
-/* Mobile table cell adjustments */
+/* Currency/number cells - better alignment */
+td.numeric {
+    font-family: 'JetBrains Mono', var(--mono, monospace);
+    text-align: right;
+    padding-right: 16px;
+}
+
+/* Positive values - green */
+td.positive,
+td.up,
+td[data-change="positive"] {
+    color: #4ade80;
+}
+
+/* Negative values - red */
+td.negative,
+td.down,
+td[data-change="negative"] {
+    color: #f87171;
+}
+
+/* Neutral/small values */
+td.neutral {
+    color: var(--muted, #6b7280);
+}
+
+/* First column (asset/coin) styling */
+td:first-child,
+td.col-asset {
+    font-weight: 600;
+    color: #e2e8f4;
+}
+
+/* Mobile cell adjustments */
 @media (max-width: 767px) {
     td {
         padding: 12px 10px;
         font-size: 12px;
-        min-width: 100px;
+        min-width: 80px;
+    }
+
+    td.numeric {
+        font-size: 11px;
+        padding-right: 12px;
+    }
+
+    /* Hide less important columns on mobile */
+    td.col-mobile-hide {
+        display: none;
+    }
+
+    /* Larger hit area */
+    tbody tr {
+        min-height: 48px;
+    }
+
+    /* Better hover feedback on touch */
+    tbody tr:hover {
+        box-shadow: inset 3px 0 0 var(--accent, #9ca3af),
+                    inset -1px 0 0 rgba(255, 255, 255, 0.05);
     }
 }
 
@@ -274,58 +363,60 @@ td {
 }
 
 .coin-pill {
-    padding: 3px 11px;
-    border-radius: var(--r-pill);
+    padding: 4px 10px;
+    border-radius: var(--r-pill, 999px);
     font-size: 11px;
     cursor: pointer;
-    border: 1px solid var(--glass-border);
-    color: var(--muted);
-    background: var(--glass-bg);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #9ca3af;
+    background: rgba(30, 41, 59, 0.5);
     font-family: inherit;
     font-weight: 500;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    -webkit-tap-highlight-color: transparent;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
 }
 
-.coin-pill::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: var(--glass-shimmer);
-    transition: left 0.6s ease;
-    pointer-events: none;
-}
-
-.coin-pill:hover::before {
-    left: 100%;
-}
-
-.coin-pill:active {
-    transform: scale(0.95);
+/* Icon prefix */
+.coin-pill .coin-icon {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 4px;
+    vertical-align: middle;
 }
 
 .coin-pill:hover {
-    border-color: var(--glass-border-hi);
-    color: #9ca3af;
-    background: var(--glass-bg-strong);
+    border-color: rgba(156, 163, 175, 0.3);
+    color: #e2e8f4;
+    background: rgba(51, 65, 85, 0.6);
     transform: translateY(-1px);
 }
 
+.coin-pill:active {
+    transform: scale(0.97);
+}
+
 .coin-pill.active {
-    border-color: var(--glass-border-hi);
-    color: #9ca3af;
-    background: linear-gradient(135deg, rgba(156, 163, 175, 0.18) 0%, rgba(156, 163, 175, 0.12) 100%);
-    box-shadow: 0 0 16px rgba(156, 163, 175, 0.20);
-    transform: translateY(-1px);
+    border-color: var(--accent, #9ca3af);
+    color: #fff;
+    background: linear-gradient(135deg, 
+        rgba(156, 163, 175, 0.2) 0%, 
+        rgba(156, 163, 175, 0.1) 100%);
+    box-shadow: 0 2px 8px rgba(156, 163, 175, 0.15);
+}
+
+/* Mobile: smaller pills */
+@media (max-width: 767px) {
+    .coin-pill {
+        padding: 3px 8px;
+        font-size: 10px;
+    }
+
+    .coin-pill .coin-icon {
+        width: 12px;
+        height: 12px;
+    }
 }
 
 
@@ -334,77 +425,121 @@ td {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 24px;
-    background: #0a0e1a;
-    border-bottom: 1px solid var(--glass-border);
-    gap: 16px;
+    padding: 12px 16px;
+    background: linear-gradient(180deg, 
+        rgba(15, 23, 42, 0.95) 0%, 
+        rgba(10, 14, 26, 0.9) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 12px;
     flex-wrap: wrap;
 }
 
+@media (max-width: 767px) {
+    .table-controls-bar {
+        padding: 10px 12px;
+        gap: 8px;
+    }
+}
+
+
+/* ── Search Input ── */
 .table-search {
     position: relative;
     flex: 1;
-    min-width: 250px;
-    max-width: 400px;
+    min-width: 180px;
+    max-width: 320px;
     display: flex;
     align-items: center;
 }
 
 .table-search svg {
     position: absolute;
-    left: 14px;
-    color: var(--muted);
+    left: 12px;
+    color: #64748b;
+    width: 16px;
+    height: 16px;
 }
 
 .table-search .search-input {
     width: 100%;
-    padding: 10px 14px 10px 40px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--r-md);
-    color: #fff;
+    padding: 8px 12px 8px 36px;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--r-sm, 8px);
+    color: #e2e8f4;
     font-size: 13px;
     transition: all 0.2s;
+}
+
+.table-search .search-input::placeholder {
+    color: #64748b;
 }
 
 .table-search .search-input:focus {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(51, 65, 85, 0.7);
     border-color: rgba(156, 163, 175, 0.4);
     outline: none;
+    box-shadow: 0 0 0 2px rgba(156, 163, 175, 0.1);
 }
 
+@media (max-width: 480px) {
+    .table-search {
+        min-width: 100%;
+        max-width: 100%;
+    }
+}
+
+
+/* ── Filter Toggle ── */
 .filter-toggle {
     display: flex;
     align-items: center;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 8px 16px;
-    border-radius: var(--r-md);
+    gap: 6px;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 8px 14px;
+    border-radius: var(--r-sm, 8px);
     color: #9ca3af;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.filter-toggle svg {
+    width: 14px;
+    height: 14px;
 }
 
 .filter-toggle:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
+    background: rgba(51, 65, 85, 0.7);
+    color: #e2e8f4;
 }
 
 .filter-toggle.active {
     background: rgba(156, 163, 175, 0.2);
     color: #fff;
-    border-color: rgba(156, 163, 175, 0.4);
+    border-color: rgba(156, 163, 175, 0.3);
+}
+
+/* Mobile: icon-only filters */
+@media (max-width: 480px) {
+    .filter-toggle span {
+        display: none;
+    }
+
+    .filter-toggle {
+        padding: 8px 10px;
+    }
 }
 
 /* ── Advanced Filters Panel ── */
 /* ── Filter Row in Header ── */
 .filter-row th.filter-cell {
     padding: 4px 6px;
-    background: rgba(10, 14, 26, 0.95);
-    border-bottom: 1px solid var(--glass-border);
+    background: rgba(10, 14, 26, 0.98);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     vertical-align: top;
     cursor: default;
 }
@@ -412,13 +547,19 @@ td {
 .filter-row input.col-filter {
     width: 100%;
     padding: 6px 8px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--r-sm);
-    color: #fff;
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--r-sm, 6px);
+    color: #e2e8f4;
     font-size: 11px;
     box-sizing: border-box;
     transition: all 0.2s;
+}
+
+.filter-row input.col-filter:focus {
+    background: rgba(51, 65, 85, 0.6);
+    border-color: rgba(156, 163, 175, 0.3);
+    outline: none;
 }
 
 /* ── Aggregation Table Overrides ── */
@@ -503,17 +644,17 @@ td {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: rgba(34, 197, 94, 0.15);
+    background: rgba(34, 197, 94, 0.12);
     color: #4ade80;
-    padding: 2px 10px;
+    padding: 3px 10px;
     border-radius: 6px;
     font-size: 10px;
-    font-weight: 800;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
-    border: 1px solid rgba(34, 197, 94, 0.3);
-    transition: all 0.3s ease;
-    box-shadow: 0 0 10px rgba(34, 197, 94, 0.1);
+    letter-spacing: 0.6px;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .agg-live-dot {
@@ -522,22 +663,19 @@ td {
     background: #22c55e;
     border-radius: 50%;
     animation: pulse 2s infinite;
-    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
 }
 
+/* Subtle flash animation */
 .flash-update {
-    animation: flashUpdate 0.8s ease-out;
+    animation: flashUpdate 0.5s ease-out;
 }
 
 @keyframes flashUpdate {
     0% {
-        background-color: rgba(96, 165, 250, 0.2);
-        box-shadow: inset 0 0 15px rgba(96, 165, 250, 0.2);
+        background-color: rgba(96, 165, 250, 0.15);
     }
-
     100% {
         background-color: transparent;
-        box-shadow: inset 0 0 0 rgba(96, 165, 250, 0);
     }
 }
 
@@ -586,4 +724,5 @@ td {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+    opacity: 0.5;
 }

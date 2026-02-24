@@ -543,7 +543,7 @@ export function renderColumnDropdown(query = '') {
     // Add column items with checkboxes
     html += filtered.map(col => {
         const isVisible = visibleColumns.length === 0 || visibleColumns.includes(col.key);
-        return `<div class="combobox-item${isVisible ? ' selected' : ''}" onmousedown="event.preventDefault(); event.stopPropagation(); toggleColumn('${col.key}')">
+        return `<div class="combobox-item${isVisible ? ' selected' : ''}" onmousedown="event.preventDefault(); event.stopPropagation(); toggleColumn('${col.key}')" style="margin-right: 8px;">
             <input type="checkbox" ${isVisible ? 'checked' : ''} onchange="event.stopPropagation(); toggleColumn('${col.key}')" style="margin-right: 8px;">
             <span class="item-label">${col.label}</span>
         </div>`;
@@ -778,6 +778,13 @@ export function setupColumnDragAndDrop() {
         sourceTable = th.closest('table');
 
         th.classList.add('dragging');
+
+        // Highlight entire column being dragged
+        const draggedColumnIndex = Array.from(th.parentElement.children).indexOf(th);
+        const columnSelector = `td:nth-child(${draggedColumnIndex + 1})`;
+        sourceTable.querySelectorAll(columnSelector).forEach(td => {
+            td.classList.add('column-dragging');
+        });
     }, false); // No capture to run after resize handler
 
     // Global mouse move for drag feedback
@@ -893,6 +900,14 @@ export function setupColumnDragAndDrop() {
         if (draggedTh) {
             draggedTh.classList.remove('dragging');
             draggedTh.style.opacity = '';
+
+            // Remove column highlighting
+            const draggedColumnIndex = Array.from(draggedTh.parentElement.children).indexOf(draggedTh);
+            const columnSelector = `td:nth-child(${draggedColumnIndex + 1})`;
+            sourceTable?.querySelectorAll(columnSelector).forEach(td => {
+                td.classList.remove('column-dragging');
+            });
+
             draggedTh = null;
         }
         if (dragGhost) {

@@ -14,7 +14,16 @@ export default [
         setTimeout: "readonly",
         setInterval: "readonly",
         clearTimeout: "readonly",
-        clearInterval: "readonly"
+        clearInterval: "readonly",
+        // Browser globals
+        requestAnimationFrame: "readonly",
+        performance: "readonly",
+        Worker: "readonly",
+        self: "readonly",
+        // Project-specific globals
+        saveSettings: "readonly",
+        updateHeaderWidths: "readonly",
+        renderColumnDropdown: "readonly"
       }
     },
     rules: {
