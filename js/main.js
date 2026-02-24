@@ -15,7 +15,7 @@ async function init() {
     }, 1000);
 
     // Load state and settings first
-    loadInitialState();
+    await loadInitialState();
 
     // Setup event listeners
     setupEventListeners();

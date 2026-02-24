@@ -132,6 +132,8 @@ export function saveSettings(getChartState = null, savedScatterState = null, sav
         maxValueCcy: settings.maxValueCcy
     });
 
+    console.log('Saving columnWidths:', JSON.stringify(settings.columnWidths));
+    
     if (immediate) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
         console.log('Settings saved immediately');
@@ -407,8 +409,11 @@ export function loadSettings() {
         priceIntervalRanges.forEach(el => el.value = s.priceUpdateInterval / 1000);
     }
     if (s.columnWidths) {
+        console.log('[DEBUG] Loaded columnWidths from storage:', JSON.stringify(s.columnWidths));
         setColumnWidths(s.columnWidths);
         applyColumnWidths();
+    } else {
+        console.log('[DEBUG] No columnWidths found in storage, using defaults');
     }
     if (s.rankingLimit) {
         const rankingLimits = document.querySelectorAll('.js-ranking-limit');

@@ -6,7 +6,7 @@ console.log('init.js loaded (v2)');
 
 import {
     getShowSymbols, getRankingLimit, getColorMaxLev, getChartHighLevSplit,
-    getBubbleScale, getAggregationFactor, getDecimalPlaces, setAllRows, setActiveWindow, getActiveWindow, getChartMode, getIsZenMode
+    getBubbleScale, getAggregationFactor, getDecimalPlaces, setAllRows, setActiveWindow, getActiveWindow, getChartMode, getIsZenMode, getColumnWidth
 } from '../state.js';
 import { loadTableData } from '../storage/data.js';
 import { chartPlugins, chartOptions, chartMechanics } from '../charts/config.js';
@@ -149,15 +149,23 @@ function setupSplashScreen() {
     const splashScreen = document.getElementById('splashScreen');
     if (!splashScreen) return;
 
-    // Hide splash screen after page loads
-    window.addEventListener('load', () => {
+    // Hide splash screen - handle both cases: already loaded or still loading
+    function hideSplashScreen() {
         setTimeout(() => {
             splashScreen.classList.add('hidden');
             setTimeout(() => {
                 splashScreen.style.display = 'none';
             }, 300);
         }, 1000);
-    });
+    }
+
+    // Check if page is already loaded
+    if (document.readyState === 'complete') {
+        hideSplashScreen();
+    } else {
+        // Page still loading, wait for load event
+        window.addEventListener('load', hideSplashScreen);
+    }
 }
 
 function setupEventListeners() {
@@ -764,9 +772,9 @@ function setupResizable(element, callback) {
 }
 
 function applyColumnWidthAfterRender() {
-    const width = document.querySelector('.js-column-width-input')?.value || 100;
-    console.log('applyColumnWidthAfterRender called with width:', width);
-    applyColumnWidth(parseInt(width, 10));
+    const width = getColumnWidth();
+    console.log('applyColumnWidthAfterRender called with width from state:', width);
+    applyColumnWidth(width);
 }
 
 function initializeCharts() {

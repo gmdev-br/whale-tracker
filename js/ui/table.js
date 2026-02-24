@@ -6,7 +6,7 @@ import {
     getAllRows, getDisplayedRows, getSelectedCoins, getActiveCurrency,
     getActiveEntryCurrency, getShowSymbols, getSortKey, getSortDir,
     getVisibleColumns, getColumnOrder, setDisplayedRows, getCurrentPrices, getFxRates, getChartHighLevSplit, getFontSize, getFontSizeKnown, getDecimalPlaces, getMinBtcVolume, getScanning,
-    getWhaleMeta, getPriceUpdateVersion, getRowHeight
+    getWhaleMeta, getPriceUpdateVersion, getRowHeight, getColumnWidth
 } from '../state.js';
 import { convertToActiveCcy } from '../utils/currency.js';
 import { fmt, fmtUSD, fmtAddr, fmtCcy } from '../utils/formatters.js';
@@ -17,6 +17,7 @@ import { renderScatterPlot } from '../charts/scatter.js';
 import { renderLiqScatterPlot } from '../charts/liquidation.js';
 import { setupColumnDragAndDrop, applyColumnWidths, setupColumnResizing } from '../events/handlers.js';
 import { updateRankingPanel } from './panels.js';
+import { applyColumnWidth } from './columnWidth.js';
 import { debounce, Cache } from '../utils/performance.js';
 import { enableVirtualScroll } from '../utils/virtualScroll.js';
 import { renderAggregationTable, renderAggregationTableResumida } from './aggregation.js';
@@ -546,6 +547,9 @@ function _renderTableInternal() {
 
         // Apply column widths after table is rendered
         applyColumnWidths();
+        // Also apply the default column width (CSS variable)
+        const columnWidth = getColumnWidth();
+        applyColumnWidth(columnWidth);
 
         // Setup drag and drop for column reordering only once
         if (!document.querySelector('.dragging-initialized')) {

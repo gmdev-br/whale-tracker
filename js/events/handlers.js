@@ -727,6 +727,7 @@ function initResize(e, tableType) {
         const columnWidths = getColumnWidths() || {};
         const storageKey = `${tableType}_${colKey}`;
         columnWidths[storageKey] = parseInt(th.style.width);
+        console.log('[DEBUG] Saving column width:', storageKey, '=', columnWidths[storageKey]);
         setColumnWidths(columnWidths);
         saveSettings(null, null, null, null, null, true); // Save immediately for column resize
     };
@@ -1042,6 +1043,7 @@ export function applyColumnVisibility() {
 
 export function applyColumnWidths() {
     const columnWidths = getColumnWidths() || {};
+    console.log('[DEBUG] applyColumnWidths called, columnWidths from state:', JSON.stringify(columnWidths));
 
     // Apply widths for positions table from storage or defaults from COLUMN_DEFS
     COLUMN_DEFS.forEach(colDef => {
@@ -1051,7 +1053,10 @@ export function applyColumnWidths() {
         if (th) {
             // Priority: Stored width (new key format) > Stored width (old key format) > Default width > 100
             const storageKey = `positions_${colDef.key.replace('col-', '')}`;
-            let width = columnWidths[storageKey] || columnWidths[thId] || colDef.width || 100;
+            const oldStorageKey = thId;
+            let width = columnWidths[storageKey] || columnWidths[oldStorageKey] || colDef.width || 100;
+            
+            console.log(`[DEBUG] Column ${colDef.key}: storageKey=${storageKey}, oldStorageKey=${oldStorageKey}, storedValue=${columnWidths[storageKey] || 'undefined'}, usedWidth=${width}`);
 
             // Enforce minimum width
             if (width < 40) width = 40; // Allow smaller columns like # (width 40 in config)
