@@ -62,6 +62,11 @@ let aggMinPrice = 0;       // Local floor for aggregation table
 let aggMaxPrice = 0;       // Local ceiling for aggregation table
 let useCompactFormat = true; // Use K, M, B formatting for large numbers
 
+// Resumida table state
+let aggMinPriceResumida = 0;       // Local floor for resumida table
+let aggMaxPriceResumida = 0;       // Local ceiling for resumida table
+let aggVolumeUnitResumida = 'USD'; // 'USD' or 'BTC' for resumida table
+
 // Custom colors for leverage categories
 let leverageColors = {
     longLow: '#22c55e',    // Long pouco alavancado (verde)
@@ -346,3 +351,11 @@ export const setPriceMode = (mode) => {
     priceMode = mode;
 };
 export const setColumnWidth = (value) => { columnWidth = value; };
+
+// Resumida table getters and setters
+export const getAggMinPriceResumida = () => aggMinPriceResumida;
+export const getAggMaxPriceResumida = () => aggMaxPriceResumida;
+export const getAggVolumeUnitResumida = () => aggVolumeUnitResumida;
+export const setAggMinPriceResumida = (value) => { aggMinPriceResumida = value; };
+export const setAggMaxPriceResumida = (value) => { aggMaxPriceResumida = value; };
+export const setAggVolumeUnitResumida = (value) => { aggVolumeUnitResumida = value; };

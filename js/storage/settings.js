@@ -9,8 +9,10 @@ import {
     getChartHighLevSplit, getChartHeight, getLiqChartHeight, getSavedScatterState,
     getSavedLiqState, getColumnWidths, getColumnWidth, getActiveCurrency, getActiveEntryCurrency, getDecimalPlaces, getLeverageColors, getFontSize, getFontSizeKnown, getRowHeight, setRowHeight, getGridSpacing, getMinBtcVolume,
     getAggInterval, getAggTableHeight, getAggVolumeUnit, getAggMinPrice, getAggMaxPrice, getUseCompactFormat, getIsZenMode, getLastSeenAccountValues, getShowAggSymbols, getAggZoneColors, getAggHighlightColor, getTooltipDelay,
+    getAggMinPriceResumida, getAggMaxPriceResumida, getAggVolumeUnitResumida,
     setSortKey, setSortDir, setSavedScatterState, setSavedLiqState,
-    setColumnOrder, setVisibleColumns, setSelectedCoins, setRankingLimit, setColorMaxLev, setChartHighLevSplit, setChartMode, setBubbleScale, setBubbleOpacity, setLineThickness, setAggregationFactor, setPriceMode, setShowSymbols, setPriceUpdateInterval, setDecimalPlaces, setFontSize, setFontSizeKnown, setLeverageColors, setColumnWidth, setGridSpacing, setMinBtcVolume, setAggInterval, setAggTableHeight, setAggVolumeUnit, setAggMinPrice, setAggMaxPrice, setUseCompactFormat, setIsZenMode, setLastSeenAccountValues, setShowAggSymbols, setAggZoneColors, setAggHighlightColor, setTooltipDelay
+    setColumnOrder, setVisibleColumns, setSelectedCoins, setRankingLimit, setColorMaxLev, setChartHighLevSplit, setChartMode, setBubbleScale, setBubbleOpacity, setLineThickness, setAggregationFactor, setPriceMode, setShowSymbols, setPriceUpdateInterval, setDecimalPlaces, setFontSize, setFontSizeKnown, setLeverageColors, setColumnWidth, setGridSpacing, setMinBtcVolume, setAggInterval, setAggTableHeight, setAggVolumeUnit, setAggMinPrice, setAggMaxPrice, setUseCompactFormat, setIsZenMode, setLastSeenAccountValues, setShowAggSymbols, setAggZoneColors, setAggHighlightColor, setTooltipDelay,
+    setAggMinPriceResumida, setAggMaxPriceResumida, setAggVolumeUnitResumida
 } from '../state.js';
 import { COLUMN_DEFS } from '../config.js';
 import { cbSetValue, updateCoinSearchLabel } from '../ui/combobox.js';
@@ -101,6 +103,9 @@ export function saveSettings(getChartState = null, savedScatterState = null, sav
         aggVolumeUnit: getAggVolumeUnit(),
         aggMinPrice: getAggMinPrice(),
         aggMaxPrice: getAggMaxPrice(),
+        aggMinPriceResumida: getAggMinPriceResumida(),
+        aggMaxPriceResumida: getAggMaxPriceResumida(),
+        aggVolumeUnitResumida: getAggVolumeUnitResumida(),
         useCompactFormat: getUseCompactFormat(),
         isZenMode: getIsZenMode(),
         showAggSymbols: getShowAggSymbols(),
@@ -499,6 +504,25 @@ export function loadSettings() {
         setAggMaxPrice(s.aggMaxPrice);
         const aggMaxEl = document.getElementById('aggMaxPrice');
         if (aggMaxEl) aggMaxEl.value = s.aggMaxPrice > 0 ? s.aggMaxPrice : '';
+    }
+    // Resumida table settings
+    if (s.aggMinPriceResumida !== undefined) {
+        setAggMinPriceResumida(s.aggMinPriceResumida);
+        const aggMinEl = document.getElementById('aggMinPriceResumida');
+        if (aggMinEl) aggMinEl.value = s.aggMinPriceResumida > 0 ? s.aggMinPriceResumida : '';
+    }
+    if (s.aggMaxPriceResumida !== undefined) {
+        setAggMaxPriceResumida(s.aggMaxPriceResumida);
+        const aggMaxEl = document.getElementById('aggMaxPriceResumida');
+        if (aggMaxEl) aggMaxEl.value = s.aggMaxPriceResumida > 0 ? s.aggMaxPriceResumida : '';
+    }
+    if (s.aggVolumeUnitResumida !== undefined) {
+        setAggVolumeUnitResumida(s.aggVolumeUnitResumida);
+        // Update UI for Resumida volume unit tabs
+        const resumidaUnitTabs = document.querySelectorAll('#aggSectionWrapperResumida .js-agg-volume-unit-tab');
+        resumidaUnitTabs.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.unit === s.aggVolumeUnitResumida);
+        });
     }
     if (s.useCompactFormat !== undefined) {
         setUseCompactFormat(s.useCompactFormat);

@@ -27,7 +27,7 @@ import {
 } from '../state.js';
 import { COLUMN_DEFS } from '../config.js';
 import { renderTable, updateStats } from '../ui/table.js';
-import { renderAggregationTable, scrollToCurrentPriceRange as aggScrollToRange } from '../ui/aggregation.js';
+import { renderAggregationTable, renderAggregationTableResumida, scrollToCurrentPriceRange as aggScrollToRange } from '../ui/aggregation.js';
 import { renderQuotesPanel, updateRankingPanel } from '../ui/panels.js';
 import { saveSettings } from '../storage/settings.js';
 import { startPriceTicker, stopPriceTicker } from '../ui/panels.js';
@@ -354,6 +354,7 @@ export function updateAggZoneColors(e) {
     saveSettings();
     // Call directly with force=true to bypass all debounce/optimization caches
     renderAggregationTable(true);
+    renderAggregationTableResumida(true);
 }
 
 export function updateAggHighlightColor(e) {
@@ -361,6 +362,7 @@ export function updateAggHighlightColor(e) {
     setAggHighlightColor(highlightColor);
     saveSettings();
     renderAggregationTable(true);
+    renderAggregationTableResumida(true);
 }
 
 export function updateTooltipDelay(val) {

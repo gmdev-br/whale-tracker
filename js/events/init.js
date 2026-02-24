@@ -546,6 +546,11 @@ function setupEventListeners() {
         setupResizable(aggTableSection, updateAggTableHeight);
     }
 
+    const aggTableSectionResumida = document.getElementById('agg-table-section-resumida');
+    if (aggTableSectionResumida) {
+        setupResizable(aggTableSectionResumida, updateAggTableHeight);
+    }
+
     // Grid spacing control - attach to both mobile and desktop
     const gridSpacingRanges = document.querySelectorAll('.js-grid-spacing-range');
     gridSpacingRanges.forEach(range => {

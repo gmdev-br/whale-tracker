@@ -7,7 +7,7 @@ import { saveSettings } from '../storage/settings.js';
 import { fmtCcy } from '../utils/formatters.js';
 import { updateCoinSearchLabel } from './combobox.js';
 import { renderTable } from './table.js';
-import { renderAggregationTable } from './aggregation.js';
+import { renderAggregationTable, renderAggregationTableResumida } from './aggregation.js';
 import { getScatterChart } from '../charts/scatter.js';
 import { getLiqChartInstance } from '../charts/liquidation.js';
 import { CURRENCY_META } from '../config.js';
@@ -450,6 +450,7 @@ export function startPriceTicker() {
 
             // Update aggregation table highlight if active
             renderAggregationTable();
+            renderAggregationTableResumida();
 
             // Update main table with new prices
             renderTable();

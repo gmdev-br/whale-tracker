@@ -1,57 +1,26 @@
-# Action Plan: Fix Real-time Updates and Currency Switching
+# Plano para Duplicar a Seção da Tabela de Criptos (Criptos - Resumida)
 
-## 1. Diagnosis
-The user reports persistent issues despite previous fixes:
-1.  **Crypto Table Not Updating:** Real-time data (PnL, Value, Dist%) remains static.
-2.  **BTC Price Line Static:** The "Current Price" line on charts doesn't move.
-3.  **Currency Switching Failed:** Switching from USD to BTC has no effect on the table.
-4.  **Service Worker Caching:** Strong indication that the browser is serving old code (`sw.js` cache) preventing fixes from loading.
+## 1. Alterações no Arquivo HTML (`index.html`)
+- Localizar a seção existente `<!-- Collapsible Aggregation Section -->` (com ID `aggSectionWrapper`).
+- Duplicar toda essa estrutura em um novo bloco logo abaixo do original.
+- Alterar o título da nova seção para `Criptos - Resumida`.
+- Atualizar os IDs da nova seção para evitar conflitos com os originais e permitir manipulação independente via JavaScript. Exemplos de novos IDs:
+  - `aggResumidaSectionWrapper`
+  - `aggResumidaSectionContent`
+  - `aggResumidaStatsBar`
+  - `aggResumidaTable`
+  - `aggResumidaTableBody`
+- Ajustar os atributos `data-target` nos botões de collapse da nova seção.
 
-## 2. Technical Root Causes (Identified & Verified)
--   **Table Update:** `panels.js` was updated to call `renderTable()`, and `table.js` now invalidates cache on price updates. Logic is correct.
--   **Worker Calculation:** `dataWorker.js` correctly recalculates derived fields (`unrealizedPnl`, `positionValue`) using new prices.
--   **BTC Conversion:** `convertToActiveCcy` in `dataWorker.js` now handles `targetCurrency === 'BTC'` correctly.
--   **Service Worker:** `sw.js` was updated to `v6` and includes `self.skipWaiting()`. However, the user might still be on the old version if they haven't closed/reopened the tab or hard-refreshed.
+## 2. Alterações no Arquivo JavaScript (`js/ui/aggregation.js`)
+- Criar a lógica para processar os dados resumidos (agrupamentos maiores ou dados de moedas específicas).
+- Referenciar os novos elementos do DOM criados em `index.html` (ex: `document.getElementById('aggResumidaTableBody')`).
+- Criar ou ajustar funções de renderização (`renderResumidaTable` ou similar) para injetar os dados processados na nova tabela.
+- Adicionar os 'event listeners' necessários caso a tabela resumida tenha controles próprios (exemplo: botões de filtro, ordenação).
 
-## 3. Implementation Plan
+## 3. Inconsistências Arquiteturais Verificadas (Chain of Thought / Cadeia de Pensamento)
+- **Desempenho (Renderização):** Adicionar uma nova tabela significa que as atualizações do estado podem precisar renderizar duas tabelas (a normal e a resumida). Devemos garantir que o processo de re-renderização seja eficiente (usando "document fragments" ou virtual scroll se a tabela resumida ficar grande). O ideal no perfil "Resumida" é justamente ter menos linhas, não impactando muito.
+- **Gerenciamento de Estado:** A lógica de cálculo/agregação das faixas de liquidação que hoje vai para uma tabela deverá também alimentar (com outros parâmetros possivelmente) a nova tabela resumida. Idealmente, criaremos uma função auxiliar para não sobrecarregar as rotinas principais.
+- **Responsividade:** A nova tabela deve herdar as mesmas classes CSS (`agg-table`, `table-wrap`) para garantir o mesmo layout responsivo que a tabela principal já possui.
 
-### Phase 1: Force Update & Cache Clearing (Critical)
--   **Objective:** Ensure the user receives the latest code.
--   **Action:** Add a "New Version Available" toast notification in `main.js` / `index.html` that appears when a new Service Worker is detected, with a "Reload" button that forces `window.location.reload()`.
--   **Action:** Explicitly unregister old service workers if necessary during `init.js` to ensure a clean slate for debugging.
-
-### Phase 2: Verify & Fix Chart Annotations
-- [x] Action: In `panels.js`, verify that `scatterChart.options.plugins.annotation.annotations.currentPriceLine` is correctly targeting the `xScale` (which changes based on currency).
-  - **Findings**: The chart uses a custom plugin `btcPriceLabel` instead of the standard `annotation` plugin. The `refPrice` calculation was using `activeCurrency` (Value) instead of `activeEntryCurrency` (X-Axis), causing mismatch when currencies differed.
-  - **Fix**: Updated `panels.js` to use `activeEntryCurrency` for `refPrice` and correctly update `btcPriceLabel` options. Removed dead code for `annotation` plugin.
-
-### Phase 3: Verify Currency Switching Logic
-- [x] Action: Verify `activeCurrency` state propagation to `dataWorker.js`.
-  - **Status**: Confirmed `currencyState` including `activeCurrency` is passed to worker. Added debug logs to worker to verify receipt.
-- [ ] Action: Verify that `renderTable` triggers a re-render with the new currency.
-- [ ] Action: Check if `virtualScrollManager` needs a force update when currency changes.
-
-### Phase 4: User Feedback Loop
--   **Objective:** Confirm fix.
--   **Action:** Ask the user to click the "Reload" button (if implemented) or perform a hard refresh (Ctrl+F5) after these changes.
-
-## 4. Success Criteria
-1.  **Table Updates:** PnL and Value columns change every ~3 seconds.
-2.  **BTC Line:** The vertical line on the chart moves with the BTC price.
-3.  **BTC Mode:** Switching to BTC converts all $ values to ₿ values in the table.
-4.  **Logs:** Console shows `[PriceUpdate]` and `[TableRender]` occurring in sync.
-
-## 5. Execution Steps
-1.  **Approve Plan:** User approves this plan.
-2.  **Implement Toast:** Add update notification.
-3.  **Refine Worker Logging:** Add temporary logs to `dataWorker.js` for verification.
-4.  **Deploy:** User tests.
-
-## 6. Adjustable Row Height (Completed)
-- **Objective:** Allow users to customize the height of table rows for better density control.
-- **Implementation:**
-  - Added `rowHeight` to `state.js` and `settings.js`.
-  - Added UI control in `index.html`.
-  - Implemented `updateRowHeight` handler in `handlers.js`.
-  - Updated `table.js` to use `rowHeight` in virtual scrolling and rendering.
-  - Added event listeners in `init.js`.
+Por favor, confirme se o plano está alinhado com o esperado para eu prosseguir com a implementação!

@@ -2,7 +2,7 @@
 // LIQUID GLASS — Aggregation Table
 // ═══════════════════════════════════════════════════════════
 
-import { getDisplayedRows, getCurrentPrices, getFxRates, getActiveEntryCurrency, getAggInterval, getAggVolumeUnit, getShowAggSymbols, getAggZoneColors, getAggHighlightColor, getDecimalPlaces, getTooltipDelay, getAggMinPrice, getAggMaxPrice, setAggMinPrice, setAggMaxPrice, setAggVolumeUnit } from '../state.js';
+import { getDisplayedRows, getCurrentPrices, getFxRates, getActiveEntryCurrency, getAggInterval, getAggVolumeUnit, getShowAggSymbols, getAggZoneColors, getAggHighlightColor, getDecimalPlaces, getTooltipDelay, getAggMinPrice, getAggMaxPrice, setAggMinPrice, setAggMaxPrice, setAggVolumeUnit, getAggMinPriceResumida, getAggMaxPriceResumida, getAggVolumeUnitResumida, setAggMinPriceResumida, setAggMaxPriceResumida, setAggVolumeUnitResumida } from '../state.js';
 import { getCorrelatedEntry, getCorrelatedPrice } from '../utils/currency.js';
 import { fmtUSD, fmtCcy } from '../utils/formatters.js';
 import { enableVirtualScroll } from '../utils/virtualScroll.js';
@@ -18,6 +18,17 @@ let lastRenderedPricesHash = '';
 let aggVirtualScrollManager = null;
 let currentPriceRangeIndex = -1; // Track index for the floating button
 let aggControlsInitialized = false; // Flag to ensure event listeners are added only once
+
+// Resumida table state
+let lastRenderedBandResumida = null;
+let lastRenderedUnitResumida = null;
+let lastRenderedIntervalResumida = null;
+let lastRenderedRowCountResumida = 0;
+let lastRenderedColorsStrResumida = '';
+let lastRenderedPricesHashResumida = '';
+let aggVirtualScrollManagerResumida = null;
+let currentPriceRangeIndexResumida = -1;
+let aggControlsInitializedResumida = false;
 
 /**
  * Computes a lightweight hash of the prices for coins with active positions.
@@ -893,3 +904,591 @@ document.addEventListener('mouseover', (e) => {
         }
     }, delay);
 });
+
+// ═══════════════════════════════════════════════════════════
+// RESUMIDA TABLE - Aggregation Table (Simplified Version)
+// ═══════════════════════════════════════════════════════════
+
+export function renderAggregationTableResumida(force = false) {
+    const aggSection = document.getElementById('aggSectionWrapperResumida');
+    const isCollapsed = aggSection?.classList.contains('collapsed');
+
+    // Optimization: Skip rendering if collapsed, unless forced
+    if (isCollapsed && !force) {
+        return;
+    }
+
+    // Initialize controls only once
+    if (!aggControlsInitializedResumida) {
+        // 1. Aggregation Interval Tabs for Resumida
+        const intervalTabs = document.querySelectorAll('#aggIntervalTabsResumida .tab-button');
+        if (intervalTabs) {
+            intervalTabs.forEach(t => t.addEventListener('click', () => {
+                const interval = parseInt(t.dataset.interval);
+                setAggInterval(interval);
+                intervalTabs.forEach(btn => btn.classList.toggle('active', btn === t));
+                renderAggregationTableResumida(true);
+                saveSettings();
+            }));
+        }
+
+        // 2. Aggregation Volume Unit Tabs for Resumida
+        const unitTabs = document.querySelectorAll('#aggVolumeUnitTabsResumida .tab-button');
+        if (unitTabs) {
+            unitTabs.forEach(t => t.addEventListener('click', () => {
+                const unit = t.dataset.unit;
+                setAggVolumeUnitResumida(unit);
+                unitTabs.forEach(btn => btn.classList.toggle('active', btn === t));
+                renderAggregationTableResumida(true);
+                saveSettings();
+            }));
+        }
+
+        // 3. Local Range Controls for Resumida
+        const minInput = document.getElementById('aggMinPriceResumida');
+        const maxInput = document.getElementById('aggMaxPriceResumida');
+
+        if (minInput && maxInput) {
+            const updateRange = () => {
+                const min = parseFloat(minInput.value) || 0;
+                const max = parseFloat(maxInput.value) || 0;
+                setAggMinPriceResumida(min);
+                setAggMaxPriceResumida(max);
+                renderAggregationTableResumida(true);
+                saveSettings();
+            };
+
+            minInput.addEventListener('change', updateRange);
+            maxInput.addEventListener('change', updateRange);
+
+            const onEnter = (e) => { if (e.key === 'Enter') updateRange(); };
+            minInput.addEventListener('keydown', onEnter);
+            maxInput.addEventListener('keydown', onEnter);
+        }
+
+        // 4. Volume Unit Toggle Buttons for Resumida
+        const volumeUnitButtons = document.querySelectorAll('#aggSectionWrapperResumida .js-agg-volume-unit-tab');
+        if (volumeUnitButtons) {
+            volumeUnitButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const unit = btn.dataset.unit;
+                    setAggVolumeUnitResumida(unit);
+                    volumeUnitButtons.forEach(b => b.classList.toggle('active', b === btn));
+                    renderAggregationTableResumida(true);
+                    saveSettings();
+                });
+            });
+        }
+
+        aggControlsInitializedResumida = true;
+    }
+
+    const rows = getDisplayedRows();
+    const currentPrices = getCurrentPrices();
+    const fxRates = getFxRates();
+    const activeEntryCurrency = getActiveEntryCurrency();
+    const aggVolumeUnitResumida = getAggVolumeUnitResumida();
+    const showAggSymbols = getShowAggSymbols();
+    const aggZoneColors = getAggZoneColors();
+    const aggHighlightColor = getAggHighlightColor();
+    const decimalPlaces = getDecimalPlaces();
+    const bandSize = Math.max(1, getAggInterval());
+    const btcPrice = currentPrices['BTC'] ? parseFloat(currentPrices['BTC']) : 0;
+
+    // Build current band identity
+    const currentBand = btcPrice > 0 ? Math.floor(btcPrice / bandSize) * bandSize : 0;
+    const colorsStr = JSON.stringify(aggZoneColors || {});
+    const pricesHash = computeRelevantPricesHash(currentPrices, rows);
+
+    // Optimization: Skip rendering if data hasn't significantly changed
+    if (!force &&
+        lastRenderedBandResumida === currentBand &&
+        lastRenderedUnitResumida === aggVolumeUnitResumida &&
+        lastRenderedIntervalResumida === bandSize &&
+        lastRenderedRowCountResumida === rows.length &&
+        lastRenderedColorsStrResumida === colorsStr &&
+        lastRenderedPricesHashResumida === pricesHash) {
+        return;
+    }
+
+    if (!rows || rows.length === 0) {
+        document.getElementById('aggTableBodyResumida').innerHTML = '<tr><td colspan="16" class="empty-cell">Sem dados disponíveis.</td></tr>';
+        document.getElementById('aggStatsBarResumida').innerHTML = '';
+        lastRenderedRowCountResumida = 0;
+        return;
+    }
+
+    // Update state tracking
+    lastRenderedBandResumida = currentBand;
+    lastRenderedUnitResumida = aggVolumeUnitResumida;
+    lastRenderedIntervalResumida = bandSize;
+    lastRenderedRowCountResumida = rows.length;
+    lastRenderedColorsStrResumida = colorsStr;
+    lastRenderedPricesHashResumida = pricesHash;
+
+    const bands = {};
+
+    let totalLongNotional = 0;
+    let totalShortNotional = 0;
+    let posCount = rows.length;
+    let bandsWithPosCount = 0;
+
+    // 1. Determine the range
+    let minEntryBand = getAggMinPriceResumida();
+    let maxEntryBand = getAggMaxPriceResumida();
+    let isAutoRange = false;
+
+    if (!minEntryBand || !maxEntryBand || minEntryBand <= 0 || maxEntryBand <= 0 || minEntryBand >= maxEntryBand) {
+        minEntryBand = Infinity;
+        maxEntryBand = -Infinity;
+        isAutoRange = true;
+
+        for (const r of rows) {
+            const entryCcy = getCorrelatedEntry(r, activeEntryCurrency, currentPrices, fxRates);
+            if (!isNaN(entryCcy) && entryCcy > 0) {
+                const b = Math.floor(entryCcy / bandSize) * bandSize;
+                if (b < minEntryBand) minEntryBand = b;
+                if (b > maxEntryBand) maxEntryBand = b;
+            }
+        }
+    } else {
+        minEntryBand = Math.floor(minEntryBand / bandSize) * bandSize;
+        maxEntryBand = Math.floor(maxEntryBand / bandSize) * bandSize;
+    }
+
+    if (minEntryBand === Infinity || minEntryBand === -Infinity) {
+        const statsBar = document.getElementById('aggStatsBarResumida');
+        if (statsBar) statsBar.innerHTML = '';
+        document.getElementById('aggTableBodyResumida').innerHTML = '<tr><td colspan="16" class="empty-cell">Sem dados disponíveis.</td></tr>';
+        return;
+    }
+
+    // 2. Safety Truncate (Anti-Freeze)
+    const MAX_ALLOWED_BANDS = 5000;
+    let totalBandsCount = Math.floor((maxEntryBand - minEntryBand) / bandSize) + 1;
+    if (totalBandsCount > MAX_ALLOWED_BANDS) {
+        console.warn(`[AggTableResumida] Excessive range detected (${totalBandsCount} bands). Truncating around current price.`);
+        const centerBand = currentBand > 0 ? currentBand : (maxEntryBand + minEntryBand) / 2;
+        const halfRange = Math.floor(MAX_ALLOWED_BANDS / 2) * bandSize;
+        minEntryBand = Math.max(minEntryBand, Math.floor((centerBand - halfRange) / bandSize) * bandSize);
+        maxEntryBand = Math.min(maxEntryBand, Math.floor((centerBand + halfRange) / bandSize) * bandSize);
+    }
+
+    // 3. Pre-populate bands map
+    for (let b = minEntryBand; b <= maxEntryBand; b += bandSize) {
+        bands[b] = {
+            faixaDe: b,
+            faixaAte: b + bandSize,
+            qtdLong: 0,
+            notionalLong: 0,
+            qtdShort: 0,
+            notionalShort: 0,
+            sumLiqNotionalLong: 0,
+            sumLiqNotionalShort: 0,
+            liqVolLong: 0,
+            liqVolShort: 0,
+            ativosLong: new Set(),
+            ativosShort: new Set(),
+            positionsLong: [],
+            positionsShort: [],
+            isEmpty: true
+        };
+    }
+
+    // 4. Populate volumes
+    for (const r of rows) {
+        const entryCcy = getCorrelatedEntry(r, activeEntryCurrency, currentPrices, fxRates);
+        if (!isNaN(entryCcy) && entryCcy > 0) {
+            const bandDown = Math.floor(entryCcy / bandSize) * bandSize;
+            const b = bands[bandDown];
+            if (b) {
+                b.isEmpty = false;
+                const val = r.positionValue;
+                if (r.side === 'long') {
+                    b.qtdLong++;
+                    b.notionalLong += val;
+                    if (r.liquidationPx > 0) {
+                        const liqPriceCorr = getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
+                        b.sumLiqNotionalLong += (liqPriceCorr * val);
+                    }
+                    b.ativosLong.add(r.coin);
+                    b.positionsLong.push(r);
+                    totalLongNotional += val;
+                } else {
+                    b.qtdShort++;
+                    b.notionalShort += val;
+                    if (r.liquidationPx > 0) {
+                        const liqPriceCorr = getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
+                        b.sumLiqNotionalShort += (liqPriceCorr * val);
+                    }
+                    b.ativosShort.add(r.coin);
+                    b.positionsShort.push(r);
+                    totalShortNotional += val;
+                }
+            }
+        }
+
+        // Liquidation Volume logic
+        if (r.liquidationPx > 0) {
+            const liqPriceCorr = getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
+            if (isFinite(liqPriceCorr) && liqPriceCorr > 0) {
+                const liqBand = Math.floor(liqPriceCorr / bandSize) * bandSize;
+                const lb = bands[liqBand];
+                if (lb) {
+                    if (r.side === 'long') lb.liqVolLong += r.positionValue;
+                    else lb.liqVolShort += r.positionValue;
+                }
+            }
+        }
+    }
+
+    // Convert bands to array and sort descending
+    const bandArray = Object.values(bands).sort((a, b) => b.faixaDe - a.faixaDe);
+    bandsWithPosCount = bandArray.filter(b => !b.isEmpty).length;
+
+    if (bandArray.length > 0) {
+        const maxBand = bandArray[0].faixaDe;
+        const minBand = bandArray[bandArray.length - 1].faixaDe;
+        const totalBands = Math.floor((maxBand - minBand) / bandSize) + 1;
+
+        const fullBandArray = bandArray;
+        let vacuosCount = bandArray.filter(b => b.isEmpty).length;
+
+        // Top Stats
+        const ratioLS = totalShortNotional > 0 ? (totalLongNotional / totalShortNotional).toFixed(3) : '∞';
+        const statsHtml = `
+            <div class="agg-live-indicator" style="margin-right:8px">
+                <div class="agg-live-badge"><div class="agg-live-dot"></div>LIVE</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:rgba(255,255,255,0.05);border-radius:4px">Long Total <span style="color:#22c55e;font-weight:700;font-family:monospace">${fmtUsdCompact(totalLongNotional)}</span></div>
+            <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:rgba(255,255,255,0.05);border-radius:4px">Short Total <span style="color:#ef4444;font-weight:700;font-family:monospace">${fmtUsdCompact(totalShortNotional)}</span></div>
+            <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:rgba(255,255,255,0.05);border-radius:4px">Ratio L/S <span style="color:#60a5fa;font-weight:700">${ratioLS}x</span></div>
+            <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:rgba(255,255,255,0.05);border-radius:4px">Posições <span style="font-weight:700">${posCount}</span></div>
+            <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:rgba(255,255,255,0.05);border-radius:4px">c/ Posições <span style="color:#22c55e;font-weight:700">${bandsWithPosCount}</span></div>
+            <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:rgba(255,255,255,0.05);border-radius:4px">Vácuos <span style="color:#6b7280;font-weight:700">${vacuosCount}</span></div>
+            <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:rgba(255,255,255,0.05);border-radius:4px">Total faixas <span style="font-weight:700">${totalBands}</span></div>
+        `;
+        const statsBar = document.getElementById('aggStatsBarResumida');
+        if (statsBar) {
+            statsBar.innerHTML = statsHtml;
+            statsBar.classList.remove('flash-update');
+            void statsBar.offsetWidth;
+            statsBar.classList.add('flash-update');
+        }
+
+        // Render rows using Virtual Scroll
+        const currentBtcPos = btcPrice > 0 ? btcPrice : 0;
+
+        if (!aggVirtualScrollManagerResumida) {
+            aggVirtualScrollManagerResumida = enableVirtualScroll('aggTableBodyResumida', { threshold: 40, rowHeight: 36 });
+        }
+
+        const rowRenderer = (b, index) => {
+            const totalNotional = b.notionalLong + b.notionalShort;
+            const isEmpty = b.isEmpty;
+
+            const isCurrentPriceRange = currentBtcPos >= b.faixaDe && currentBtcPos < b.faixaAte;
+
+            let domType = 'VACUO';
+            let domPct = 0;
+            let domBg = '';
+            let domColor = '#6b7280';
+            let colorLong = '#4b5563';
+            let colorShort = '#4b5563';
+
+            if (totalNotional > 0) {
+                if (b.notionalLong > b.notionalShort) {
+                    domType = 'COMPRA';
+                    const isForte = b.notionalLong >= 30_000_000;
+                    domColor = isForte ? aggZoneColors.buyStrong : aggZoneColors.buyNormal;
+                    domBg = isForte ? `rgba(${hexToRgb(aggZoneColors.buyStrong)}, 0.1)` : `rgba(${hexToRgb(aggZoneColors.buyNormal)}, 0.05)`;
+                    domPct = (b.notionalLong / totalNotional) * 100;
+                } else if (b.notionalShort > b.notionalLong) {
+                    domType = 'VENDA';
+                    const isForte = b.notionalShort >= 30_000_000;
+                    domColor = isForte ? aggZoneColors.sellStrong : aggZoneColors.sellNormal;
+                    domBg = isForte ? `rgba(${hexToRgb(aggZoneColors.sellStrong)}, 0.1)` : `rgba(${hexToRgb(aggZoneColors.sellNormal)}, 0.05)`;
+                    domPct = (b.notionalShort / totalNotional) * 100;
+                } else {
+                    domType = 'NEUTRO';
+                    domColor = '#9ca3af';
+                    domPct = 50;
+                }
+            }
+
+            let intType = '—';
+            let intColor = '#6b7280';
+            const isWeakIntensity = totalNotional < 10_000_000;
+            if (totalNotional >= 100_000_000) { intType = 'EXTREMA >100M'; intColor = '#f59e0b'; }
+            else if (totalNotional >= 30_000_000) { intType = 'FORTE >30M'; intColor = '#22c55e'; }
+            else if (totalNotional >= 10_000_000) { intType = 'MEDIA >10M'; intColor = '#60a5fa'; }
+            else if (totalNotional > 3_000_000) { intType = 'FRACA >3M'; intColor = '#9ca3af'; }
+            else if (totalNotional > 0) { intType = 'MUITO FRACA'; intColor = '#4b5563'; }
+
+            let zoneType = isEmpty ? 'Zona Vazia' : '—';
+            let zoneColor = '#4b5563';
+            if (!isEmpty) {
+                const isForteLong = b.notionalLong >= 30_000_000;
+                const isForteShort = b.notionalShort >= 30_000_000;
+                const isForteTotal = totalNotional >= 30_000_000;
+                const isForteZone = (domPct === 100 || isForteTotal) && totalNotional >= 10_000_000;
+                const baseStr = domType === 'COMPRA' ? 'Compra' : domType === 'VENDA' ? 'Venda' : 'Neutro';
+
+                const isContested = domPct < 70;
+
+                if (isContested) {
+                    zoneType = 'Contestada';
+                    zoneColor = '#ffffff';
+                    domColor = '#ffffff';
+                } else {
+                    if (domPct === 50) {
+                        zoneType = 'Indecisão';
+                        zoneColor = '#9ca3af';
+                    } else {
+                        if (isForteZone) {
+                            zoneType = baseStr + ' Forte';
+                            zoneColor = domType === 'COMPRA' ? aggZoneColors.buyStrong : aggZoneColors.sellStrong;
+                        } else {
+                            zoneType = baseStr + ' Normal';
+                            zoneColor = domType === 'COMPRA' ? aggZoneColors.buyNormal : aggZoneColors.sellNormal;
+                        }
+                    }
+
+                    domColor = domType === 'COMPRA' ? (isForteZone ? aggZoneColors.buyStrong : aggZoneColors.buyNormal) :
+                        domType === 'VENDA' ? (isForteZone ? aggZoneColors.sellStrong : aggZoneColors.sellNormal) : '#6b7280';
+                }
+
+                if (isContested) {
+                    colorLong = b.notionalLong > 0 ? '#ffffff' : '#4b5563';
+                    colorShort = b.notionalShort > 0 ? '#ffffff' : '#4b5563';
+                } else if (totalNotional >= 10_000_000) {
+                    if (domType === 'COMPRA') {
+                        colorLong = b.notionalLong > 0 ? zoneColor : '#4b5563';
+                        colorShort = b.notionalShort > 0 ? '#9ca3af' : '#4b5563';
+                    } else if (domType === 'VENDA') {
+                        colorLong = b.notionalLong > 0 ? '#9ca3af' : '#4b5563';
+                        colorShort = b.notionalShort > 0 ? zoneColor : '#4b5563';
+                    } else {
+                        colorLong = b.notionalLong > 0 ? '#9ca3af' : '#4b5563';
+                        colorShort = b.notionalShort > 0 ? '#9ca3af' : '#4b5563';
+                    }
+                } else {
+                    colorLong = b.notionalLong > 0 ? aggZoneColors.buyNormal : '#4b5563';
+                    colorShort = b.notionalShort > 0 ? aggZoneColors.sellNormal : '#4b5563';
+                }
+
+                domBg = isForteZone ? `rgba(${hexToRgb(domColor)}, 0.1)` : `rgba(${hexToRgb(domColor)}, 0.05)`;
+            } else {
+                colorLong = '#4b5563';
+                colorShort = '#4b5563';
+                domBg = '';
+                domColor = '#6b7280';
+            }
+
+            let totalNotionalColor = '#bfdbfe';
+            let fwBold = '700';
+            let fwSemi = '600';
+
+            if (!isEmpty && (domPct === 100 || totalNotional >= 10_000_000)) {
+                if (totalNotional >= 10_000_000 && domType !== 'NEUTRO') {
+                    totalNotionalColor = domColor;
+                    intColor = domColor;
+                    fwBold = '700';
+                    fwSemi = '700';
+                }
+            }
+
+            if (!isEmpty && domPct < 70 && totalNotional >= 10_000_000) {
+                totalNotionalColor = '#ffffff';
+                intColor = '#ffffff';
+                fwBold = '700';
+                fwSemi = '700';
+            }
+
+            if (isWeakIntensity && !isEmpty) {
+                colorLong = '#4b5563';
+                colorShort = '#4b5563';
+                domColor = '#6b7280';
+                zoneColor = '#4b5563';
+                intColor = '#4b5563';
+                totalNotionalColor = '#6b7280';
+                domBg = '';
+                fwBold = '400';
+                fwSemi = '400';
+            }
+
+            const formatVal = (v) => {
+                if (v === 0) return '—';
+                if (aggVolumeUnitResumida === 'BTC' && btcPrice > 0) {
+                    const btcVal = v / btcPrice;
+                    const sym = showAggSymbols ? '₿' : '';
+                    return sym + (btcVal >= 1000 ? (btcVal / 1000).toFixed(1) + 'K' : btcVal.toFixed(2));
+                }
+                return fmtUsdCompact(v, showAggSymbols);
+            };
+            const formatQty = (v) => v > 0 ? v : '—';
+
+            const longCol = colorLong;
+            const shortCol = colorShort;
+
+            const trStyle = isEmpty ? 'opacity:0.6;background:transparent' : '';
+
+            let highlightStyle = '';
+            if (isCurrentPriceRange) {
+                const hexColor = aggHighlightColor || '#facc15';
+                const r = parseInt(hexColor.slice(1, 3), 16);
+                const g = parseInt(hexColor.slice(3, 5), 16);
+                const b = parseInt(hexColor.slice(5, 7), 16);
+                highlightStyle = `background:rgba(${r},${g},${b},0.2); border:1px solid ${hexColor}; box-shadow:inset 0 0 10px rgba(${r},${g},${b},0.2)`;
+            }
+
+            const trClass = isCurrentPriceRange ? 'active-price-range' : '';
+
+            let rowBgCSS = '';
+            if (highlightStyle) {
+            } else if (domBg) {
+                rowBgCSS = `background:${domBg}`;
+            }
+
+            const expectedStyle = `${trStyle}; ${highlightStyle || ''}; ${rowBgCSS}`.replace(/;+/g, ';').replace(/^; |; $/g, '').trim();
+
+            const starIndicator = totalNotional >= 100_000_000 ? '<span style="color:#f59e0b; margin-right:4px; font-size:14px">⭐</span>' : '';
+
+            let tooltipData = null;
+            if (!isEmpty && (b.positionsLong.length > 0 || b.positionsShort.length > 0)) {
+                const maxItems = 15;
+                tooltipData = {
+                    longs: [],
+                    shorts: [],
+                    longsCount: 0,
+                    shortsCount: 0,
+                    longsRemaining: 0,
+                    shortsRemaining: 0
+                };
+
+                if (b.positionsLong.length > 0) {
+                    tooltipData.longsCount = new Set(b.positionsLong.map(p => p.address)).size;
+                    const sortedLongs = [...b.positionsLong].sort((x, y) => y.positionValue - x.positionValue);
+                    tooltipData.longs = sortedLongs.slice(0, maxItems).map(p => {
+                        const entryCorr = getCorrelatedEntry(p, activeEntryCurrency, currentPrices, fxRates);
+                        return {
+                            name: p.displayName || p.address.substring(0, 6) + '...',
+                            coin: p.coin,
+                            displayEntry: entryCorr.toLocaleString('en-US', { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces }),
+                            displayVol: aggVolumeUnitResumida === 'BTC'
+                                ? `₿${(btcPrice > 0 ? p.positionValue / btcPrice : 0).toFixed(2)}`
+                                : fmtUsdCompact(p.positionValue)
+                        };
+                    });
+                    tooltipData.longsRemaining = Math.max(0, sortedLongs.length - maxItems);
+                }
+
+                if (b.positionsShort.length > 0) {
+                    tooltipData.shortsCount = new Set(b.positionsShort.map(p => p.address)).size;
+                    const sortedShorts = [...b.positionsShort].sort((x, y) => y.positionValue - x.positionValue);
+                    tooltipData.shorts = sortedShorts.slice(0, maxItems).map(p => {
+                        const entryCorr = getCorrelatedEntry(p, activeEntryCurrency, currentPrices, fxRates);
+                        return {
+                            name: p.displayName || p.address.substring(0, 6) + '...',
+                            coin: p.coin,
+                            displayEntry: entryCorr.toLocaleString('en-US', { minimumFractionDigits: decimalPlaces, maximumFractionDigits: decimalPlaces }),
+                            displayVol: aggVolumeUnitResumida === 'BTC'
+                                ? `₿${(btcPrice > 0 ? p.positionValue / btcPrice : 0).toFixed(2)}`
+                                : fmtUsdCompact(p.positionValue)
+                        };
+                    });
+                    tooltipData.shortsRemaining = Math.max(0, sortedShorts.length - maxItems);
+                }
+            }
+
+            const tooltipAttr = tooltipData ? `data-tooltip='${JSON.stringify(tooltipData).replace(/'/g, "&#39;").replace(/"/g, "&quot;")}'` : '';
+            const tooltipClass = tooltipData ? 'has-tooltip' : '';
+
+            const isRangeMultiple1000 = b.faixaDe % 1000 === 0;
+            const isRangeMultiple500 = b.faixaDe % 500 === 0;
+
+            let rangeColor = isCurrentPriceRange ? '#fff' : '#d1d5db';
+            let rangeWeight = '700';
+
+            if (isRangeMultiple1000) {
+                rangeColor = '#fbbf24';
+                rangeWeight = '800';
+            } else if (isRangeMultiple500) {
+                rangeColor = '#fcd34d';
+                rangeWeight = '700';
+            }
+
+            const avgLiqLong = b.notionalLong > 0 ? b.sumLiqNotionalLong / b.notionalLong : 0;
+            const avgLiqShort = b.notionalShort > 0 ? b.sumLiqNotionalShort / b.notionalShort : 0;
+
+            const formatLiq = (val, col) => {
+                if (val === 0) return '—';
+                const entMeta = CURRENCY_META[activeEntryCurrency] || CURRENCY_META.USD;
+                const sym = showAggSymbols ? entMeta.symbol : '';
+                return `<span style="color:${col}">${sym}${val.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>`;
+            };
+
+            const liqHtml = `<div style="display:flex; flex-direction:column; gap:2px; font-size:10px; line-height:1">
+                ${b.notionalLong > 0 ? `<div>L: ${formatLiq(avgLiqLong, colorLong)}</div>` : ''}
+                ${b.notionalShort > 0 ? `<div>S: ${formatLiq(avgLiqShort, colorShort)}</div>` : ''}
+            </div>`;
+
+            const fmtVal = (v) => {
+                if (aggVolumeUnitResumida === 'BTC' && btcPrice > 0) {
+                    const btcVal = v / btcPrice;
+                    const sym = showAggSymbols ? '₿' : '';
+                    return sym + (btcVal >= 1000 ? (btcVal / 1000).toFixed(1) + 'K' : btcVal.toFixed(2));
+                }
+                return fmtUsdCompact(v, showAggSymbols);
+            };
+
+            const liqRenderer = (val, type) => {
+                if (val === 0) return '<span class="muted" style="opacity:0.4">—</span>';
+                const color = type === 'long' ? aggZoneColors.buyNormal : aggZoneColors.sellNormal;
+                const weight = val >= 30_000_000 ? 'font-weight:bold;' : '';
+                return `<span style="color:${color};${weight}">${fmtVal(val)}</span>`;
+            };
+
+            const newContent = `
+                <td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; font-weight:${rangeWeight}; color:${rangeColor}; position: relative;">
+                    ${starIndicator}
+                    ${isCurrentPriceRange ? `<div style="font-size:10px; color:${aggHighlightColor}; position:absolute; top:-6px; right:4px; line-height:1; background:#0a0e1a; padding:0 2px; border-radius:2px;">$${btcPrice.toLocaleString()}</div>` : ''}
+                    $${b.faixaDe.toLocaleString()}
+                </td>
+                <td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; color:${isRangeMultiple1000 || isRangeMultiple500 ? rangeColor : '#9ca3af'}; font-weight:${isRangeMultiple1000 ? '800' : (isRangeMultiple500 ? '700' : '400')}">$${b.faixaAte.toLocaleString()}</td>
+                <td class="col-agg-liq" style="font-family:monospace; vertical-align:middle">${liqHtml}</td>
+                <td class="mono col-agg-val">${liqRenderer(b.liqVolLong, 'long')}</td>
+                <td class="mono col-agg-val">${liqRenderer(b.liqVolShort, 'short')}</td>
+                <td class="col-agg-qty" style="color:${longCol}; text-align:center">${formatQty(b.qtdLong)}</td>
+                <td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="color:${longCol}; font-family:monospace; font-weight:${b.notionalLong > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalLong)}</td>
+                <td class="col-agg-qty" style="color:${shortCol}; text-align:center">${formatQty(b.qtdShort)}</td>
+                <td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="color:${shortCol}; font-family:monospace; font-weight:${b.notionalShort > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalShort)}</td>
+                <td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="font-family:monospace; color:${totalNotionalColor}; font-weight:${fwSemi}">${formatVal(totalNotional)}</td>
+                <td class="col-agg-dom" style="color:${domColor}; font-weight:${fwBold}">${domType}</td>
+                <td class="col-agg-pct" style="color:${domColor}; font-weight:${fwBold}">${domPct > 0 ? domPct.toFixed(1) + '%' : '—'}</td>
+                <td class="col-agg-int" style="color:${intColor}; font-size:11px; font-weight:${fwSemi}">${intType}</td>
+                <td class="col-agg-zone" style="color:${zoneColor}; font-weight:${fwSemi}">${zoneType}</td>
+                <td class="col-agg-assets" style="color:${longCol}; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosLong).join(', ')}">${Array.from(b.ativosLong).join(', ')}</td>
+                <td class="col-agg-assets" style="color:${shortCol}; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosShort).join(', ')}">${Array.from(b.ativosShort).join(', ')}</td>
+            `;
+
+            return `<tr class="${trClass}" style="${expectedStyle}">${newContent}</tr>`;
+        };
+
+        currentPriceRangeIndexResumida = fullBandArray.findIndex(b => currentBtcPos >= b.faixaDe && currentBtcPos < b.faixaAte);
+
+        aggVirtualScrollManagerResumida.renderRow = rowRenderer;
+        aggVirtualScrollManagerResumida.setData(fullBandArray);
+    } else {
+        document.getElementById('aggTableBodyResumida').innerHTML = '<tr><td colspan="16" class="empty-cell">Sem dados disponíveis.</td></tr>';
+    }
+}
+
+/**
+ * Scrolls the resumida table to the current price range row
+ */
+export function scrollToCurrentPriceRangeResumida() {
+    if (aggVirtualScrollManagerResumida && currentPriceRangeIndexResumida !== -1) {
+        aggVirtualScrollManagerResumida.scrollToIndex(currentPriceRangeIndexResumida);
+    }
+}

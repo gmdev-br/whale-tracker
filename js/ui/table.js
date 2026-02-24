@@ -19,7 +19,7 @@ import { setupColumnDragAndDrop, applyColumnWidths, setupColumnResizing } from '
 import { updateRankingPanel } from './panels.js';
 import { debounce, Cache } from '../utils/performance.js';
 import { enableVirtualScroll } from '../utils/virtualScroll.js';
-import { renderAggregationTable } from './aggregation.js';
+import { renderAggregationTable, renderAggregationTableResumida } from './aggregation.js';
 
 // Cache for filtered data to avoid recomputing
 const filterCache = new Cache(5000);
@@ -542,6 +542,7 @@ function _renderTableInternal() {
 
         // Render aggregation table based on filtered rows
         renderAggregationTable(true);
+        renderAggregationTableResumida(true);
 
         // Apply column widths after table is rendered
         applyColumnWidths();
