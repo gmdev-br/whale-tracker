@@ -10,7 +10,7 @@ import {
 import { streamPositions } from './hyperliquid.js';
 
 export async function startScan(callbacks) {
-    const { setStatus, setProgress, fetchAllMids, updateStats, updateCoinFilter, renderTable, saveTableData, finishScan, setLastSaveTime, setRenderPending } = callbacks;
+    const { setStatus, setProgress, fetchAllMids, updateStats, updateCoinFilter, renderTable, updateTableDataOnly, saveTableData, finishScan, setLastSaveTime, setRenderPending } = callbacks;
     const minVal = parseFloat(document.getElementById('minValue').value) || 2500000;
     const scanStartTime = Date.now();
 

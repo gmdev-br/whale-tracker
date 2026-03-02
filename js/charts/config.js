@@ -14,7 +14,6 @@ import {
     liqZoomConfig,
     originalScaleResizing,
     setupChartHeightResizing,
-    setupColumnResizing,
     resetScatterZoom,
     resetLiqZoom
 } from './chart-mechanics-adapted.js';
@@ -27,8 +26,7 @@ export const chartPlugins = {
 };
 
 export const chartMechanics = {
-    setupChartHeightResizing,
-    setupColumnResizing
+    setupChartHeightResizing
 };
 
 export const chartOptions = {

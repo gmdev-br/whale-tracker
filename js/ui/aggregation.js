@@ -2,7 +2,7 @@
 // LIQUID GLASS — Aggregation Table
 // ═════════════════════════════════════════════
 
-import { getDisplayedRows, getCurrentPrices, getFxRates, getActiveEntryCurrency, getAggInterval, getAggVolumeUnit, getShowLiquidationSymbols, getLiquidationZoneColors, getLiquidationHighlightColor, getDecimalPlaces, getTooltipDelay, getLiquidationMinPriceFull, getLiquidationMaxPriceFull, setLiquidationMinPriceFull, setLiquidationMaxPriceFull, setAggVolumeUnit, setAggInterval, getLiquidationMinPriceSummary, getLiquidationMaxPriceSummary, getLiquidationVolumeUnitSummary, setLiquidationMinPriceSummary, setLiquidationMaxPriceSummary, setLiquidationVolumeUnitSummary } from '../state.js';
+import { getDisplayedRows, getCurrentPrices, getFxRates, getActiveEntryCurrency, getAggInterval, getAggVolumeUnit, getShowLiquidationSymbols, getLiquidationZoneColors, getLiquidationHighlightColor, getDecimalPlaces, getTooltipDelay, getLiquidationMinPriceFull, getLiquidationMaxPriceFull, setLiquidationMinPriceFull, setLiquidationMaxPriceFull, setAggVolumeUnit, setAggInterval, getLiquidationMinPriceSummary, getLiquidationMaxPriceSummary, getLiquidationVolumeUnitSummary, setLiquidationMinPriceSummary, setLiquidationMaxPriceSummary, setLiquidationVolumeUnitSummary, getAggColumnOrder, getAggColumnOrderResumida } from '../state.js';
 import { getCorrelatedEntry, getCorrelatedPrice } from '../utils/currency.js';
 import { enableVirtualScroll } from '../utils/virtualScroll.js';
 import { saveSettings } from '../storage/settings.js';
@@ -227,6 +227,35 @@ function renderAggregationTableBase(options = {}) {
     // Render stats bar
     renderStatsBar(statsBarId, totalLongNotional, totalShortNotional, posCount, bandsWithPosCount, vacuosCount, totalBands);
 
+    // Reorder headers if there's a saved column order
+    const savedHeaderOrder = isResumida ? getAggColumnOrderResumida() : getAggColumnOrder();
+    if (savedHeaderOrder && savedHeaderOrder.length > 0) {
+        const tableEl = document.getElementById(isResumida ? 'liquidationTableSummary' : 'liquidationTableFull');
+        if (tableEl) {
+            const theadRow = tableEl.querySelector('thead tr');
+            if (theadRow) {
+                const thMap = new Map();
+                const allThs = Array.from(theadRow.querySelectorAll('th'));
+                allThs.forEach(th => {
+                    thMap.set(th.id, th);
+                });
+
+                // Reorder headers
+                const fragment = document.createDocumentFragment();
+                savedHeaderOrder.forEach(thId => {
+                    const th = thMap.get(thId);
+                    if (th) {
+                        fragment.appendChild(th);
+                    }
+                });
+
+                // Clear and re-append in new order
+                theadRow.innerHTML = '';
+                theadRow.appendChild(fragment);
+            }
+        }
+    }
+
     // Render table rows
     const currentBtcPos = btcPrice > 0 ? btcPrice : 0;
 
@@ -244,7 +273,8 @@ function renderAggregationTableBase(options = {}) {
         fxRates,
         btcPrice,
         aggVolumeUnit,
-        currentBtcPos
+        currentBtcPos,
+        isResumida
     });
 
     state.currentPriceRangeIndex = bandArray.findIndex(b => currentBtcPos >= b.faixaDe && currentBtcPos < b.faixaAte);
@@ -508,7 +538,7 @@ function renderStatsBar(statsBarId, totalLongNotional, totalShortNotional, posCo
  * Create a row renderer function with captured context
  */
 function createRowRenderer(context) {
-    const { aggZoneColors, aggHighlightColor, showAggSymbols, decimalPlaces, activeEntryCurrency, currentPrices, fxRates, btcPrice, aggVolumeUnit, currentBtcPos } = context;
+    const { aggZoneColors, aggHighlightColor, showAggSymbols, decimalPlaces, activeEntryCurrency, currentPrices, fxRates, btcPrice, aggVolumeUnit, currentBtcPos, isResumida } = context;
 
     return (b, _index) => {
         const totalNotional = b.notionalLong + b.notionalShort;
@@ -786,28 +816,38 @@ function createRowRenderer(context) {
             return `<span style="color:${color};${weight}">${fmtVal(val)}</span>`;
         };
 
-        const newContent = `
-            <td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; font-weight:${rangeWeight}; color:${rangeColor}; position: relative;">
-                ${starIndicator}
-                ${isCurrentPriceRange ? `<div style="font-size:10px; color:${aggHighlightColor}; position:absolute; top:-6px; right:4px; line-height:1; background:#0a0e1a; padding:0 2px; border-radius:2px;">$${btcPrice.toLocaleString()}</div>` : ''}
-                $${b.faixaDe.toLocaleString()}
-            </td>
-            <td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; color:${isRangeMultiple1000 || isRangeMultiple500 ? rangeColor : '#9ca3af'}; font-weight:${isRangeMultiple1000 ? '800' : (isRangeMultiple500 ? '700' : '400')}">$${b.faixaAte.toLocaleString()}</td>
-            <td class="col-agg-liq" style="font-family:monospace; vertical-align:middle">${liqHtml}</td>
-            <td class="mono col-agg-val">${liqRenderer(b.liqVolLong, 'long')}</td>
-            <td class="mono col-agg-val">${liqRenderer(b.liqVolShort, 'short')}</td>
-            <td class="col-agg-qty" style="color:${colorLong}; text-align:center">${formatQty(b.qtdLong)}</td>
-            <td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="color:${colorLong}; font-family:monospace; font-weight:${b.notionalLong > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalLong)}</td>
-            <td class="col-agg-qty" style="color:${colorShort}; text-align:center">${formatQty(b.qtdShort)}</td>
-            <td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="color:${colorShort}; font-family:monospace; font-weight:${b.notionalShort > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalShort)}</td>
-            <td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="font-family:monospace; color:${totalNotionalColor}; font-weight:${fwSemi}">${formatVal(totalNotional)}</td>
-            <td class="col-agg-dom" style="color:${domColor}; font-weight:${fwBold}">${domType}</td>
-            <td class="col-agg-pct" style="color:${domColor}; font-weight:${fwBold}">${domPct > 0 ? domPct.toFixed(1) + '%' : '—'}</td>
-            <td class="col-agg-int" style="color:${intColor}; font-size:11px; font-weight:${fwSemi}">${intType}</td>
-            <td class="col-agg-zone" style="color:${zoneColor}; font-weight:${fwSemi}">${zoneType}</td>
-            <td class="col-agg-assets" style="color:${colorLong}; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosLong).join(', ')}">${Array.from(b.ativosLong).join(', ')}</td>
-            <td class="col-agg-assets" style="color:${colorShort}; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosShort).join(', ')}">${Array.from(b.ativosShort).join(', ')}</td>
-        `;
+        // Create cell map with th-id as key for reordering support
+        const cellMap = {
+            'th-agg-faixaDe': `<td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; font-weight:${rangeWeight}; color:${rangeColor}; position: relative;">${starIndicator}${isCurrentPriceRange ? `<div style="font-size:10px; color:${aggHighlightColor}; position:absolute; top:-6px; right:4px; line-height:1; background:#0a0e1a; padding:0 2px; border-radius:2px;">$${btcPrice.toLocaleString()}</div>` : ''}$${b.faixaDe.toLocaleString()}</td>`,
+            'th-agg-faixaAte': `<td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; color:${isRangeMultiple1000 || isRangeMultiple500 ? rangeColor : '#9ca3af'}; font-weight:${isRangeMultiple1000 ? '800' : (isRangeMultiple500 ? '700' : '400')}">$${b.faixaAte.toLocaleString()}</td>`,
+            'th-agg-liqPrice': `<td class="col-agg-liq" style="font-family:monospace; vertical-align:middle">${liqHtml}</td>`,
+            'th-agg-liqVolLong': `<td class="mono col-agg-val">${liqRenderer(b.liqVolLong, 'long')}</td>`,
+            'th-agg-liqVolShort': `<td class="mono col-agg-val">${liqRenderer(b.liqVolShort, 'short')}</td>`,
+            'th-agg-qtdLong': `<td class="col-agg-qty" style="color:${colorLong}; text-align:center">${formatQty(b.qtdLong)}</td>`,
+            'th-agg-notionalLong': `<td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="color:${colorLong}; font-family:monospace; font-weight:${b.notionalLong > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalLong)}</td>`,
+            'th-agg-qtdShort': `<td class="col-agg-qty" style="color:${colorShort}; text-align:center">${formatQty(b.qtdShort)}</td>`,
+            'th-agg-notionalShort': `<td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="color:${colorShort}; font-family:monospace; font-weight:${b.notionalShort > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalShort)}</td>`,
+            'th-agg-totalNotional': `<td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="font-family:monospace; color:${totalNotionalColor}; font-weight:${fwSemi}">${formatVal(totalNotional)}</td>`,
+            'th-agg-dominancia': `<td class="col-agg-dom" style="color:${domColor}; font-weight:${fwBold}">${domType}</td>`,
+            'th-agg-pctDom': `<td class="col-agg-pct" style="color:${domColor}; font-weight:${fwBold}">${domPct > 0 ? domPct.toFixed(1) + '%' : '—'}</td>`,
+            'th-agg-intensidade': `<td class="col-agg-int" style="color:${intColor}; font-size:11px; font-weight:${fwSemi}">${intType}</td>`,
+            'th-agg-tipoZona': `<td class="col-agg-zone" style="color:${zoneColor}; font-weight:${fwSemi}">${zoneType}</td>`,
+            'th-agg-ativosLong': `<td class="col-agg-assets" style="color:${colorLong}; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosLong).join(', ')}">${Array.from(b.ativosLong).join(', ')}</td>`,
+            'th-agg-ativosShort': `<td class="col-agg-assets" style="color:${colorShort}; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosShort).join(', ')}">${Array.from(b.ativosShort).join(', ')}</td>`
+        };
+
+        // Get saved column order (if any)
+        const savedOrder = isResumida ? getAggColumnOrderResumida() : getAggColumnOrder();
+
+        // Build content in the correct order
+        let newContent;
+        if (savedOrder && savedOrder.length > 0) {
+            // Use saved order
+            newContent = savedOrder.map(thId => cellMap[thId] || '').join('');
+        } else {
+            // Use default order
+            newContent = Object.values(cellMap).join('');
+        }
 
         return `<tr class="${trClass}" style="${expectedStyle}">${newContent}</tr>`;
     };

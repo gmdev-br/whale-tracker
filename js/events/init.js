@@ -4,9 +4,26 @@
 
 console.log('init.js loaded (v2)');
 
+// ═══════════════════════════════════════════════════════════
+// CRITICAL: Handle bfcache restoration for drag-and-drop
+// When page is restored from back-forward cache, the DOM may
+// still contain the .dragging-initialized marker, preventing
+// drag-and-drop from re-initializing after F5
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+        console.log('%c[BFCACHE] Page restored from bfcache, cleaning up...', 'background: #FF5722; color: white; font-weight: bold;');
+        const marker = document.querySelector('.dragging-initialized');
+        if (marker) {
+            marker.remove();
+            console.log('%c[BFCACHE] ✓ Removed .dragging-initialized marker', 'background: #4CAF50; color: white; font-weight: bold;');
+        }
+    }
+});
+
 import {
     getShowSymbols, getRankingLimit, getColorMaxLev, getChartHighLevSplit,
-    getBubbleScale, getAggregationFactor, getDecimalPlaces, setAllRows, setActiveWindow, getActiveWindow, getChartMode, getIsZenMode, getColumnWidth
+    getBubbleScale, getAggregationFactor, getDecimalPlaces, setAllRows, setActiveWindow, getActiveWindow, getChartMode, getIsZenMode, getColumnWidth, getColumnOrder
 } from '../state.js';
 import { loadTableData } from '../storage/data.js';
 import { chartPlugins, chartOptions, chartMechanics } from '../charts/config.js';
@@ -14,7 +31,7 @@ import { saveSettings, loadSettings } from '../storage/settings.js';
 import { updateRankingPanel, renderQuotesPanel, removeCoin as removeCoinFn, handlePriceModeClick, updatePriceModeUI, startPriceTicker } from '../ui/panels.js';
 import { renderScatterPlot, getScatterChart } from '../charts/scatter.js';
 import { renderLiqScatterPlot, getLiqChartInstance } from '../charts/liquidation.js';
-import { updateStats, renderTable, renderTableImmediate } from '../ui/table.js';
+import { updateStats, renderTable, renderTableImmediate, updateTableDataOnly } from '../ui/table.js';
 import { startScan, stopScan, togglePause, finishScan } from '../api/leaderboard.js';
 import { updateCoinFilter, cbOpen, openCombobox, cbSelect as cbSelectFn, selectCoin as selectCoinFn, cbInit, setupClickOutsideHandler } from '../ui/combobox.js';
 import { saveTableData } from '../storage/data.js';
@@ -287,6 +304,7 @@ function setupEventListeners() {
             updateStats,
             updateCoinFilter,
             renderTable,
+            updateTableDataOnly,
             saveTableData,
             finishScan,
             setLastSaveTime,
@@ -769,7 +787,6 @@ function applyColumnWidthAfterRender() {
 function initializeCharts() {
     renderScatterPlot();
     renderLiqScatterPlot();
-    chartMechanics.setupColumnResizing();
 }
 
 function initializePanels() {
@@ -782,7 +799,22 @@ function initializePanels() {
 }
 
 async function loadInitialState() {
-    console.log('loadInitialState: Starting...');
+    console.log('%c[INIT] ═══ loadInitialState STARTING ═══', 'background: #2196F3; color: white; font-weight: bold; font-size: 14px;');
+    console.log('[INIT] Timestamp:', new Date().toISOString());
+    
+    // ═══════════════════════════════════════════════════════════
+    // CRITICAL FIX: Remove any existing drag-and-drop marker from bfcache
+    // The bfcache (back-forward cache) may preserve the .dragging-initialized
+    // marker in the DOM after F5, preventing drag-and-drop from re-initializing
+    // ═══════════════════════════════════════════════════════════
+    const existingMarker = document.querySelector('.dragging-initialized');
+    if (existingMarker) {
+        console.log('%c[INIT] ⚠ Found existing .dragging-initialized marker (from bfcache), removing...', 'background: #FF5722; color: white; font-weight: bold;');
+        existingMarker.remove();
+        console.log('%c[INIT] ✓ Marker removed', 'background: #4CAF50; color: white; font-weight: bold;');
+    } else {
+        console.log('[INIT] No existing .dragging-initialized marker found');
+    }
     loadTableData(setAllRows);
 
     // Initialize currency comboboxes FIRST before loading settings
@@ -822,6 +854,9 @@ async function loadInitialState() {
     applyColumnWidths();
     updateColumnSelectDisplay();
 
+    // DEBUG: Log columnOrder after loadSettings
+    console.log('[loadInitialState] columnOrder after loadSettings:', JSON.stringify(getColumnOrder()));
+
     // Update chart control visibility based on current mode
     const chartMode = getChartMode();
     const bubbleCtrls = document.querySelectorAll('.js-bubble-size-ctrl');
@@ -839,8 +874,10 @@ async function loadInitialState() {
     // This caused unnecessary double rendering on page load. Now we render once after all async effects settle.
     // The safety net delay is kept to ensure all async effects from loadSettings/onCurrencyChange have completed.
     setTimeout(() => {
-        console.log('loadInitialState: Consolidated render after async effects...');
+        console.log('[loadInitialState] Consolidated render after async effects...');
+        console.log('[loadInitialState] columnOrder BEFORE renderTableImmediate:', JSON.stringify(getColumnOrder()));
         renderTableImmediate();
+        console.log('[loadInitialState] columnOrder AFTER renderTableImmediate:', JSON.stringify(getColumnOrder()));
     }, 350);
 
     // Apply initial Zen Mode state

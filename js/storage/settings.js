@@ -10,9 +10,11 @@ import {
     getSavedLiqState, getColumnWidths, getColumnWidth, getActiveCurrency, getActiveEntryCurrency, getDecimalPlaces, getLeverageColors, getFontSize, getFontSizeKnown, getRowHeight, setRowHeight, getGridSpacing, getMinBtcVolume,
     getAggInterval, getLiquidationTableHeight, getAggVolumeUnit, getLiquidationMinPriceFull, getLiquidationMaxPriceFull, getUseCompactFormat, getIsZenMode, getLastSeenAccountValues, getShowLiquidationSymbols, getLiquidationZoneColors, getLiquidationHighlightColor, getTooltipDelay,
     getLiquidationMinPriceSummary, getLiquidationMaxPriceSummary, getLiquidationVolumeUnitSummary,
+    getAggColumnOrder, getAggColumnOrderResumida,
     setSortKey, setSortDir, setSavedScatterState, setSavedLiqState,
     setColumnOrder, setVisibleColumns, setColumnWidths, setSelectedCoins, setRankingLimit, setColorMaxLev, setChartHighLevSplit, setChartMode, setBubbleScale, setBubbleOpacity, setLineThickness, setAggregationFactor, setPriceMode, setShowSymbols, setPriceUpdateInterval, setDecimalPlaces, setFontSize, setFontSizeKnown, setLeverageColors, setColumnWidth, setGridSpacing, setMinBtcVolume, setAggInterval, setLiquidationTableHeight, setAggVolumeUnit, setLiquidationMinPriceFull, setLiquidationMaxPriceFull, setUseCompactFormat, setIsZenMode, setLastSeenAccountValues, setShowLiquidationSymbols, setLiquidationZoneColors, setLiquidationHighlightColor, setTooltipDelay,
-    setLiquidationMinPriceSummary, setLiquidationMaxPriceSummary, setLiquidationVolumeUnitSummary
+    setLiquidationMinPriceSummary, setLiquidationMaxPriceSummary, setLiquidationVolumeUnitSummary,
+    setActiveCurrency, setActiveEntryCurrency, setAggColumnOrder, setAggColumnOrderResumida
 } from '../state.js';
 import { COLUMN_DEFS } from '../config.js';
 import { cbSetValue, updateCoinSearchLabel } from '../ui/combobox.js';
@@ -40,6 +42,11 @@ function saveSettingsImmediate(settings) {
 }
 
 export function saveSettings(getChartState = null, savedScatterState = null, savedLiqState = null, scatterChart = null, liqChartInstance = null, immediate = false) {
+    console.log(`%c[saveSettings] ════════════════════════════════════════`, 'background: #4CAF50; color: white; font-weight: bold;');
+    console.log('[saveSettings] CALLED at', new Date().toLocaleTimeString());
+    console.log('[saveSettings] immediate:', immediate);
+    console.trace('[saveSettings] Stack trace:');
+    
     // Helper to get chart state
     function getChartStateHelper(chart) {
         if (!chart) return null;
@@ -101,6 +108,8 @@ export function saveSettings(getChartState = null, savedScatterState = null, sav
         rowHeight: getRowHeight(),
         visibleColumns: getVisibleColumns(),
         columnOrder: getColumnOrder(),
+        aggColumnOrder: getAggColumnOrder(),
+        aggColumnOrderResumida: getAggColumnOrderResumida(),
         leverageColors: getLeverageColors(),
         columnWidth: getColumnWidth(),
         gridSpacing: getGridSpacing(),
@@ -133,26 +142,38 @@ export function saveSettings(getChartState = null, savedScatterState = null, sav
     });
 
     console.log('Saving columnWidths:', JSON.stringify(settings.columnWidths));
+    console.log('Saving columnOrder:', JSON.stringify(settings.columnOrder));
+    console.log('Saving aggColumnOrder:', JSON.stringify(settings.aggColumnOrder));
+    console.log('Saving aggColumnOrderResumida:', JSON.stringify(settings.aggColumnOrderResumida));
     
     if (immediate) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-        console.log('Settings saved immediately');
+        console.log('%c[saveSettings] ✓ Settings saved IMMEDIATELY', 'color: #4CAF50; font-weight: bold;');
+        console.log(`%c[saveSettings] ════════════════════════════════════════`, 'background: #4CAF50; color: white; font-weight: bold;');
     }
     else {
+        console.log('[saveSettings] Debouncing save...');
         debouncedSave(settings);
+        console.log(`%c[saveSettings] ════════════════════════════════════════`, 'background: #4CAF50; color: white; font-weight: bold;');
     }
 }
 
 export function loadSettings() {
+    console.log(`%c[loadSettings] ════════════════════════════════════════`, 'background: #FF9800; color: white; font-weight: bold;');
+    console.log('[loadSettings] CALLED at', new Date().toLocaleTimeString());
+    
     const saved = localStorage.getItem(STORAGE_KEY);
     let s = null;
 
     if (saved) {
         try {
             s = JSON.parse(saved);
+            console.log('[loadSettings] Settings loaded from localStorage');
         } catch (e) {
             console.warn('Failed to parse saved settings', e);
         }
+    } else {
+        console.log('[loadSettings] NO saved settings found in localStorage');
     }
 
     // Initialize column order
@@ -172,15 +193,34 @@ export function loadSettings() {
                 }
             }
         });
-        console.log('Setting columnOrder from saved:', s.columnOrder);
+        console.log('[loadSettings] Setting columnOrder from saved:', s.columnOrder);
         setColumnOrder(s.columnOrder);
     } else {
         // Initialize with default column order
         const defaultOrder = COLUMN_DEFS.map(c => c.key);
-        console.log('Setting default columnOrder:', defaultOrder);
+        console.log('[loadSettings] Setting DEFAULT columnOrder:', defaultOrder);
         setColumnOrder(defaultOrder);
         s = s || {};
         s.columnOrder = defaultOrder;
+    }
+
+    // Initialize aggregation column orders
+    console.log('%c[SETTINGS:LOAD] ═══ Loading aggColumnOrder ═══', 'background: #3F51B5; color: white; font-weight: bold;');
+    if (s && s.aggColumnOrder && s.aggColumnOrder.length > 0) {
+        console.log('%c[SETTINGS:LOAD] Setting aggColumnOrder from saved:', 'color: #4CAF50;', JSON.stringify(s.aggColumnOrder));
+        setAggColumnOrder(s.aggColumnOrder);
+        console.log('%c[SETTINGS:LOAD] ✓ aggColumnOrder set in state', 'color: #4CAF50;');
+    } else {
+        console.log('%c[SETTINGS:LOAD] NO aggColumnOrder found in storage', 'color: #FF9800;');
+    }
+
+    console.log('%c[SETTINGS:LOAD] ═══ Loading aggColumnOrderResumida ═══', 'background: #3F51B5; color: white; font-weight: bold;');
+    if (s && s.aggColumnOrderResumida && s.aggColumnOrderResumida.length > 0) {
+        console.log('%c[SETTINGS:LOAD] Setting aggColumnOrderResumida from saved:', 'color: #4CAF50;', JSON.stringify(s.aggColumnOrderResumida));
+        setAggColumnOrderResumida(s.aggColumnOrderResumida);
+        console.log('%c[SETTINGS:LOAD] ✓ aggColumnOrderResumida set in state', 'color: #4CAF50;');
+    } else {
+        console.log('%c[SETTINGS:LOAD] NO aggColumnOrderResumida found in storage', 'color: #FF9800;');
     }
 
     // Initialize visible columns
@@ -212,14 +252,14 @@ export function loadSettings() {
             });
         }
 
-        console.log('Setting visibleColumns from saved (sanitized):', s.visibleColumns);
+        console.log('[loadSettings] Setting visibleColumns from saved (sanitized):', s.visibleColumns);
         setVisibleColumns(s.visibleColumns);
         applyColumnVisibility();
         updateColumnSelectDisplay();
     } else {
         // Initialize with all columns visible
         const defaultVisible = COLUMN_DEFS.map(c => c.key);
-        console.log('Setting default visibleColumns:', defaultVisible);
+        console.log('[loadSettings] Setting default visibleColumns:', defaultVisible);
         setVisibleColumns(defaultVisible);
         s = s || {};
         s.visibleColumns = defaultVisible;
@@ -245,7 +285,7 @@ export function loadSettings() {
         });
 
         if (hasChanges) {
-            console.log('Updating columnOrder with missing columns:', updatedOrder);
+            console.log('[loadSettings] Updating columnOrder with missing columns:', updatedOrder);
             setColumnOrder(updatedOrder);
         }
     }
@@ -377,12 +417,39 @@ export function loadSettings() {
     });
 
     // Trigger currency change handler to update state and headers
+    // IMPORTANT: During initialization, we should NOT call renderTable here
+    // because it will render the table before loadInitialState() can apply
+    // the saved columnOrder. The render will happen later in loadInitialState().
     if (s.currencySelect || s.entryCurrencySelect) {
-        console.log('Triggering onCurrencyChange after loading settings');
-        // Import and call onCurrencyChange
-        import('../events/handlers.js').then(({ onCurrencyChange }) => {
-            onCurrencyChange();
+        console.log('[loadSettings] Updating currency state WITHOUT triggering render');
+        // Only update the currency state, don't trigger onCurrencyChange which calls renderTable
+        if (s.currencySelect) setActiveCurrency(s.currencySelect);
+        if (s.entryCurrencySelect) setActiveEntryCurrency(s.entryCurrencySelect);
+        console.log('[loadSettings] Currency state updated:', {
+            activeCurrency: s.currencySelect,
+            activeEntryCurrency: s.entryCurrencySelect
         });
+
+        // Update column headers to reflect the loaded currency settings
+        // This is done without calling renderTable to avoid resetting column order
+        const activeCurrency = s.currencySelect || 'USD';
+        const activeEntryCurrency = s.entryCurrencySelect || 'USD';
+
+        const thVal = document.getElementById('th-valueCcy');
+        if (thVal) {
+            const label = thVal.querySelector('.th-label');
+            if (label) label.textContent = `Value (${activeCurrency}) ↕`;
+        }
+        const thEntry = document.getElementById('th-entryCcy');
+        if (thEntry) {
+            const label = thEntry.querySelector('.th-label');
+            if (label) label.textContent = `Avg Entry (Corr) ↕`;
+        }
+        const thLiq = document.getElementById('th-liqPx');
+        if (thLiq) {
+            const label = thLiq.querySelector('.th-label');
+            if (label) label.textContent = `Liq. Price Corr (${activeEntryCurrency}) ↕`;
+        }
     }
     if (s.coinFilter) {
         document.getElementById('coinFilter').value = s.coinFilter;
@@ -409,11 +476,12 @@ export function loadSettings() {
         priceIntervalRanges.forEach(el => el.value = s.priceUpdateInterval / 1000);
     }
     if (s.columnWidths) {
-        //console.log('[DEBUG] Loaded columnWidths from storage:', JSON.stringify(s.columnWidths));
+        console.log('[loadSettings] Loading columnWidths from storage:', JSON.stringify(s.columnWidths));
         setColumnWidths(s.columnWidths);
+        console.log('[loadSettings] Calling applyColumnWidths() after loading...');
         applyColumnWidths();
     } else {
-        //console.log('[DEBUG] No columnWidths found in storage, using defaults');
+        console.log('[loadSettings] NO columnWidths found in storage, using defaults');
     }
     if (s.rankingLimit) {
         const rankingLimits = document.querySelectorAll('.js-ranking-limit');
@@ -569,6 +637,16 @@ export function loadSettings() {
     if (s.lastSeenAccountValues) {
         setLastSeenAccountValues(s.lastSeenAccountValues);
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // PERSISTENCE DEBUG: Load Summary
+    // ═══════════════════════════════════════════════════════════
+    console.log(`%c[PERSISTENCE:LOAD] ═══ ALL VALUES LOADED ═══`, 'background: #4CAF50; color: white; font-weight: bold; font-size: 12px;');
+    console.log(`%c[PERSISTENCE:LOAD] columnWidths:`, 'color: #4CAF50; font-weight: bold;', JSON.stringify(getColumnWidths(), null, 2));
+    console.log(`%c[PERSISTENCE:LOAD] columnOrder:`, 'color: #4CAF50; font-weight: bold;', JSON.stringify(getColumnOrder(), null, 2));
+    console.log(`%c[PERSISTENCE:LOAD] aggColumnOrder:`, 'color: #4CAF50; font-weight: bold;', JSON.stringify(getAggColumnOrder(), null, 2));
+    console.log(`%c[PERSISTENCE:LOAD] aggColumnOrderResumida:`, 'color: #4CAF50; font-weight: bold;', JSON.stringify(getAggColumnOrderResumida(), null, 2));
+    console.log(`%c[PERSISTENCE:LOAD] ✓ DONE`, 'background: #4CAF50; color: white; font-weight: bold;');
 }
 
 function updateAggVolumeUI(unit) {

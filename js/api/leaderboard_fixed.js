@@ -164,7 +164,7 @@ export function processStateWithValidation(whale, state, allRows) {
 
 // Enhanced scan function with validation
 export async function startScanWithValidation(callbacks) {
-    const { setStatus, setProgress, fetchAllMids, updateStats, updateCoinFilter, renderTable, saveTableData, finishScan, setLastSaveTime, setRenderPending } = callbacks;
+    const { setStatus, setProgress, fetchAllMids, updateStats, updateCoinFilter, renderTable, updateTableDataOnly, saveTableData, finishScan, setLastSaveTime, setRenderPending } = callbacks;
     const minVal = parseFloat(document.getElementById('minValue').value) || 2500000;
     
     document.getElementById('scanBtn').disabled = true;

@@ -191,7 +191,7 @@ export function processState(whale, state, allRows) {
 }
 
 export async function streamPositions(whaleList, minVal, maxConcurrency, callbacks) {
-    const { updateStats, updateCoinFilter, renderTable, saveTableData, setStatus, setProgress, finishScan, setLastSaveTime, setRenderPending } = callbacks;
+    const { updateStats, updateCoinFilter, renderTable, updateTableDataOnly, saveTableData, setStatus, setProgress, finishScan, setLastSaveTime, setRenderPending } = callbacks;
     const lastSaveTime = getLastSaveTime();
     let localLastSaveTime = lastSaveTime;
     let allRows = getAllRows();
@@ -242,6 +242,9 @@ export async function streamPositions(whaleList, minVal, maxConcurrency, callbac
         });
     }
 
+    // Track if this is the first render during scanning
+    let isFirstScanRender = true;
+
     function scheduleRender() {
         if (getRenderPending()) return;
         setRenderPending(true);
@@ -255,7 +258,19 @@ export async function streamPositions(whaleList, minVal, maxConcurrency, callbac
             setRenderPending(false);
             updateStats(false, allRows);
             updateCoinFilter(allRows);
-            renderTable();
+
+            // IMPORTANT: During scanning, use updateTableDataOnly to preserve column widths/order
+            // Only do full renderTable on first scan render or when not scanning
+            if (getScanning() && !isFirstScanRender && updateTableDataOnly) {
+                console.log('[scanning] Using updateTableDataOnly to preserve column state');
+                updateTableDataOnly();
+            } else {
+                if (isFirstScanRender) {
+                    console.log('[scanning] First render, using full renderTable');
+                    isFirstScanRender = false;
+                }
+                renderTable();
+            }
 
             // Periodic save to handle mid-scan refreshes
             const now = Date.now();
@@ -308,6 +323,7 @@ export async function streamPositions(whaleList, minVal, maxConcurrency, callbac
     document.getElementById('stopBtn').style.display = 'none';
     document.getElementById('pauseBtn').style.display = 'none';
     // Final render to make sure everything is shown
+    // Use full renderTable for final render to ensure everything is properly displayed
     updateStats(false, allRows);
     updateCoinFilter(allRows);
     renderTable();

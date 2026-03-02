@@ -6,7 +6,7 @@ import { getAllRows, getCurrentPrices, getSelectedCoins, getPriceMode, getPriceU
 import { saveSettings } from '../storage/settings.js';
 import { fmtCcy } from '../utils/formatters.js';
 import { updateCoinSearchLabel } from './combobox.js';
-import { renderTable } from './table.js';
+import { renderTable, updateTablePriceData } from './table.js';
 import { renderAggregationTable, renderAggregationTableResumida } from './aggregation.js';
 import { getScatterChart } from '../charts/scatter.js';
 import { getLiqChartInstance } from '../charts/liquidation.js';
@@ -493,8 +493,8 @@ export function startPriceTicker() {
             renderAggregationTable();
             renderAggregationTableResumida();
 
-            // Update main table with new prices
-            renderTable();
+            // Update main table with new prices (using lightweight update to preserve column settings)
+            updateTablePriceData();
         } catch (e) {
             console.warn('Failed to fetch prices', e);
         }

@@ -6,7 +6,7 @@ import {
     getAllRows, getDisplayedRows, getSelectedCoins, getActiveCurrency,
     getActiveEntryCurrency, getShowSymbols, getSortKey, getSortDir,
     getVisibleColumns, getColumnOrder, setDisplayedRows, getCurrentPrices, getFxRates, getChartHighLevSplit, getFontSize, getFontSizeKnown, getDecimalPlaces, getMinBtcVolume, getScanning,
-    getWhaleMeta, getPriceUpdateVersion, getRowHeight, getColumnWidth
+    getWhaleMeta, getPriceUpdateVersion, getRowHeight, getColumnWidth, getColumnWidths
 } from '../state.js';
 import { convertToActiveCcy } from '../utils/currency.js';
 import { fmt, fmtUSD, fmtAddr, fmtCcy } from '../utils/formatters.js';
@@ -54,28 +54,233 @@ if (window.Worker) {
 // Cache for headers to prevent loss during reordering
 let cachedHeaders = null;
 let cachedFilterHeaders = null;
+let lastColumnOrder = null;
+let lastVisibleColumns = null;
 
-function reorderTableHeadersAndFilters(columnOrder) {
+/**
+ * Validates if cached headers are still attached to DOM
+ * Elements get detached when innerHTML is cleared or parent is removed
+ * @returns {boolean} true if all cached headers are still in DOM
+ */
+function areHeadersValid() {
+    if (!cachedHeaders) {
+        console.log('[areHeadersValid] cachedHeaders is null/undefined');
+        return false;
+    }
+
+    // Check if at least one header is still attached to DOM
+    const headers = Object.values(cachedHeaders);
+    if (headers.length === 0) {
+        console.log('[areHeadersValid] cachedHeaders is empty');
+        return false;
+    }
+
+    // Sample check: verify first header is still in DOM
+    // If it's detached, all are likely detached
+    const sampleHeader = headers[0];
+    const isConnected = sampleHeader.isConnected || document.body.contains(sampleHeader);
+    
+    console.log('[areHeadersValid] Sample header:', sampleHeader.id, 'isConnected:', isConnected);
+    
+    return isConnected;
+}
+
+/**
+ * Checks if the actual DOM header order matches the expected columnOrder
+ * This detects when headers have been reset to default HTML order
+ * @param {string[]} columnOrder - Expected column order
+ * @returns {boolean} true if DOM matches expected order
+ */
+function isDOMHeaderOrderCorrect(columnOrder) {
     const table = document.getElementById('positionsTable');
-    if (!table) return;
+    if (!table) return true; // Can't check, assume correct
+    
+    const headerRow = table.querySelector('thead tr');
+    if (!headerRow) return true;
+    
+    const domHeaders = Array.from(headerRow.querySelectorAll('th'));
+    const domOrder = domHeaders.map(th => `col-${th.id.replace('th-', '')}`);
+    
+    // Filter to only compare columns that exist in both
+    const expectedOrder = (columnOrder || []).filter(col => domOrder.includes(col));
+    const actualOrder = domOrder.filter(col => (columnOrder || []).includes(col));
+    
+    const matches = JSON.stringify(expectedOrder) === JSON.stringify(actualOrder);
+    
+    if (!matches) {
+        console.log('[isDOMHeaderOrderCorrect] ⚠️ DOM order does NOT match expected!');
+        console.log('[isDOMHeaderOrderCorrect] Expected:', JSON.stringify(expectedOrder));
+        console.log('[isDOMHeaderOrderCorrect] Actual DOM:', JSON.stringify(actualOrder));
+    }
+    
+    return matches;
+}
+
+/**
+ * Rebuilds the header cache from current DOM state
+ * Call this when headers are known to be valid (after initial render)
+ */
+function rebuildHeaderCache() {
+    console.log('[rebuildHeaderCache] ════════════════════════════════════════');
+    console.log('[rebuildHeaderCache] CALLED at', new Date().toLocaleTimeString());
+    console.trace('[rebuildHeaderCache] Stack trace:');
+    
+    const table = document.getElementById('positionsTable');
+    if (!table) {
+        console.warn('[rebuildHeaderCache] Table not found');
+        return;
+    }
 
     const headerRow = table.querySelector('thead tr');
-    if (!headerRow) return;
+    if (!headerRow) {
+        console.warn('[rebuildHeaderCache] Header row not found');
+        return;
+    }
 
-    // Initialize cache from DOM if not present
-    if (!cachedHeaders) {
+    // Capture current DOM order BEFORE clearing cache
+    const currentDOMOrder = Array.from(headerRow.querySelectorAll('th')).map(th => th.id);
+    console.log('[rebuildHeaderCache] Current DOM header order:', JSON.stringify(currentDOMOrder));
+    console.log('[rebuildHeaderCache] Current state columnOrder:', JSON.stringify(getColumnOrder()));
+
+    // Clear existing cache
+    cachedHeaders = {};
+    cachedFilterHeaders = {};
+
+    // Rebuild from current DOM
+    const currentHeaders = Array.from(headerRow.querySelectorAll('th'));
+    currentHeaders.forEach(th => {
+        const colKey = th.id.replace('th-', '');
+        if (colKey) {
+            cachedHeaders[`col-${colKey}`] = th;
+        }
+    });
+
+    const filterRow = document.querySelector('.filter-row');
+    if (filterRow) {
+        const currentFilterHeaders = Array.from(filterRow.querySelectorAll('th'));
+        currentFilterHeaders.forEach(th => {
+            const classes = Array.from(th.classList);
+            const colClass = classes.find(cls => cls.startsWith('col-'));
+            if (colClass) {
+                cachedFilterHeaders[colClass] = th;
+            }
+        });
+    }
+
+    console.log('[rebuildHeaderCache] Header cache rebuilt, found', Object.keys(cachedHeaders).length, 'headers');
+    console.log('[rebuildHeaderCache] cachedHeaders keys:', JSON.stringify(Object.keys(cachedHeaders)));
+    console.log('[rebuildHeaderCache] ════════════════════════════════════════');
+}
+
+/**
+ * Checks if column configuration has actually changed
+ * Used to avoid unnecessary header re-renders
+ */
+function hasColumnConfigChanged(columnOrder, visibleColumns) {
+    const orderChanged = JSON.stringify(columnOrder) !== JSON.stringify(lastColumnOrder);
+    const visibilityChanged = JSON.stringify(visibleColumns) !== JSON.stringify(lastVisibleColumns);
+    
+    console.log('[hasColumnConfigChanged] DEBUG:', {
+        columnOrder: JSON.stringify(columnOrder),
+        lastColumnOrder: JSON.stringify(lastColumnOrder),
+        orderChanged,
+        visibleColumns: JSON.stringify(visibleColumns),
+        lastVisibleColumns: JSON.stringify(lastVisibleColumns),
+        visibilityChanged,
+        result: orderChanged || visibilityChanged
+    });
+    
+    return orderChanged || visibilityChanged;
+}
+
+function reorderTableHeadersAndFilters(columnOrder) {
+    console.log('[reorderTableHeadersAndFilters] ════════════════════════════════════════');
+    console.log('[reorderTableHeadersAndFilters] CALLED at', new Date().toLocaleTimeString());
+    console.log('[reorderTableHeadersAndFilters] columnOrder received:', JSON.stringify(columnOrder));
+    console.trace('[reorderTableHeadersAndFilters] Stack trace:');
+
+    const table = document.getElementById('positionsTable');
+    if (!table) {
+        console.warn('[reorderTableHeadersAndFilters] Table not found, returning');
+        return;
+    }
+
+    const headerRow = table.querySelector('thead tr');
+    if (!headerRow) {
+        console.warn('[reorderTableHeadersAndFilters] Header row not found, returning');
+        return;
+    }
+
+    const visibleColumns = getVisibleColumns();
+    console.log('[reorderTableHeadersAndFilters] visibleColumns:', JSON.stringify(visibleColumns));
+    console.log('[reorderTableHeadersAndFilters] cachedHeaders before:', cachedHeaders ? Object.keys(cachedHeaders).length : 'null');
+    if (cachedHeaders) {
+        console.log('[reorderTableHeadersAndFilters] cachedHeaders keys:', JSON.stringify(Object.keys(cachedHeaders)));
+    }
+
+    // Check if we actually need to reorder (optimization)
+    const headersValid = areHeadersValid();
+    const configChanged = hasColumnConfigChanged(columnOrder, visibleColumns);
+    const domOrderCorrect = isDOMHeaderOrderCorrect(columnOrder);
+    
+    console.log('[reorderTableHeadersAndFilters] areHeadersValid():', headersValid);
+    console.log('[reorderTableHeadersAndFilters] hasColumnConfigChanged():', configChanged);
+    console.log('[reorderTableHeadersAndFilters] isDOMHeaderOrderCorrect():', domOrderCorrect);
+
+    if (!configChanged && headersValid && domOrderCorrect) {
+        console.log('[reorderTableHeadersAndFilters] No changes needed, just reapplying widths');
+        console.log('[reorderTableHeadersAndFilters] getColumnWidths() before reapply:', JSON.stringify(getColumnWidths()));
+        // Just reapply widths, don't touch headers
+        applyColumnWidths();
+        console.log('[reorderTableHeadersAndFilters] getColumnWidths() after reapply:', JSON.stringify(getColumnWidths()));
+        const columnWidth = getColumnWidth();
+        applyColumnWidth(columnWidth);
+        return;
+    }
+    
+    if (!domOrderCorrect) {
+        console.log('[reorderTableHeadersAndFilters] DOM order mismatch detected - forcing reorder');
+    }
+
+    // Update tracking
+    console.log('[reorderTableHeadersAndFilters] Updating lastColumnOrder from:', JSON.stringify(lastColumnOrder), 'to:', JSON.stringify(columnOrder));
+    lastColumnOrder = [...(columnOrder || [])];
+    lastVisibleColumns = [...(visibleColumns || [])];
+
+    // Check if cached headers are still valid (attached to DOM)
+    if (!headersValid) {
+        console.log('[reorderTableHeadersAndFilters] Cache INVALID - rebuilding from DOM');
+        console.log('[reorderTableHeadersAndFilters] Current DOM header order BEFORE rebuild:');
+        const table = document.getElementById('positionsTable');
+        if (table) {
+            const currentHeaders = Array.from(table.querySelectorAll('thead tr th'));
+            console.log('[reorderTableHeadersAndFilters]   DOM headers:', JSON.stringify(currentHeaders.map(h => h.id)));
+        }
+        rebuildHeaderCache();
+        console.log('[reorderTableHeadersAndFilters] cachedHeaders after rebuild:', cachedHeaders ? Object.keys(cachedHeaders).length : 'null');
+        if (cachedHeaders) {
+            console.log('[reorderTableHeadersAndFilters] cachedHeaders keys after rebuild:', JSON.stringify(Object.keys(cachedHeaders)));
+        }
+    } else {
+        console.log('[reorderTableHeadersAndFilters] Cache is valid');
+    }
+
+    // Initialize cache from DOM if still not present
+    if (!cachedHeaders || Object.keys(cachedHeaders).length === 0) {
         const currentHeaders = Array.from(headerRow.querySelectorAll('th'));
         if (currentHeaders.length > 0) {
             cachedHeaders = {};
             currentHeaders.forEach(th => {
                 const colKey = th.id.replace('th-', '');
-                cachedHeaders[`col-${colKey}`] = th;
+                if (colKey) {
+                    cachedHeaders[`col-${colKey}`] = th;
+                }
             });
         }
     }
 
     const filterRow = document.querySelector('.filter-row');
-    if (!cachedFilterHeaders && filterRow) {
+    if ((!cachedFilterHeaders || Object.keys(cachedFilterHeaders).length === 0) && filterRow) {
         const currentFilterHeaders = Array.from(filterRow.querySelectorAll('th'));
         if (currentFilterHeaders.length > 0) {
             cachedFilterHeaders = {};
@@ -95,9 +300,9 @@ function reorderTableHeadersAndFilters(columnOrder) {
         return;
     }
 
-    // If columnOrder is empty, do not clear headers
+    // If columnOrder is empty, use default order from cache keys
     if (!columnOrder || columnOrder.length === 0) {
-        return;
+        columnOrder = Object.keys(cachedHeaders);
     }
 
     // PERFORMANCE: Use DocumentFragment to batch DOM updates
@@ -117,13 +322,151 @@ function reorderTableHeadersAndFilters(columnOrder) {
         }
     });
 
+    // IMPORTANT: Update cache references BEFORE clearing DOM
+    // The appendChild operation moves elements, so we need to preserve the references
+    const newCachedHeaders = {};
+    const newCachedFilterHeaders = {};
+
+    columnOrder.forEach(colKey => {
+        if (cachedHeaders[colKey]) {
+            newCachedHeaders[colKey] = cachedHeaders[colKey];
+        }
+        if (cachedFilterHeaders && cachedFilterHeaders[colKey]) {
+            newCachedFilterHeaders[colKey] = cachedFilterHeaders[colKey];
+        }
+    });
+
     // Clear and append in single batch operation
+    console.log('[reorderTableHeadersAndFilters] ⚠️ CLEARING headerRow.innerHTML');
     headerRow.innerHTML = '';
+    console.log('[reorderTableHeadersAndFilters] Appending headerFragment');
     headerRow.appendChild(headerFragment);
     if (filterRow) {
+        console.log('[reorderTableHeadersAndFilters] ⚠️ CLEARING filterRow.innerHTML');
         filterRow.innerHTML = '';
         filterRow.appendChild(filterFragment);
     }
+
+    // IMPORTANT: Also reorder the data cells (td) in tbody to match headers
+    // This ensures data stays aligned with headers after drag-and-drop
+    console.log('[reorderTableHeadersAndFilters] Reordering data cells in tbody...');
+    console.log('[reorderTableHeadersAndFilters] columnOrder for cell reorder:', JSON.stringify(columnOrder));
+    const tbody = table.querySelector('tbody');
+    if (tbody) {
+        const rows = tbody.querySelectorAll('tr');
+        console.log('[reorderTableHeadersAndFilters] Found', rows.length, 'rows in tbody');
+
+        // FIX: Skip cell reordering if no data rows exist yet.
+        // The rowRenderer in finalizeTableRender already generates cells in the correct
+        // order based on columnOrder, so we don't need to reorder them after the fact.
+        // This fixes the timing issue where reorderTableHeadersAndFilters was called
+        // before finalizeTableRender created the rows.
+        const hasDataRows = Array.from(rows).some(row =>
+            !row.classList.contains('vs-top-spacer') &&
+            !row.classList.contains('vs-bottom-spacer') &&
+            row.querySelectorAll('td').length > 0
+        );
+        
+        if (!hasDataRows) {
+            console.log('[reorderTableHeadersAndFilters] No data rows found yet. Skipping cell reorder - rowRenderer will handle ordering during generation.');
+        } else {
+            // Only reorder cells if data rows exist
+        rows.forEach((row, rowIndex) => {
+            // SKIP virtual scroll spacer rows - they have only 1 cell with colspan
+            if (row.classList.contains('vs-top-spacer') || row.classList.contains('vs-bottom-spacer')) {
+                console.log('[reorderTableHeadersAndFilters] Skipping spacer row', rowIndex);
+                return;
+            }
+            
+            const cells = Array.from(row.querySelectorAll('td'));
+            if (cells.length === 0) {
+                console.log('[reorderTableHeadersAndFilters] Row', rowIndex, 'has no cells, skipping');
+                return; // Skip empty rows - rowRenderer hasn't populated them yet
+            }
+            console.log('[reorderTableHeadersAndFilters] Row', rowIndex, 'has', cells.length, 'cells');
+
+            // Create a map of colKey to cell based on cell class
+            const cellMap = new Map();
+            cells.forEach((cell, cellIndex) => {
+                // Find the col- class on the cell
+                const colClass = Array.from(cell.classList).find(cls => cls.startsWith('col-'));
+                if (colClass) {
+                    cellMap.set(colClass, cell);
+                }
+            });
+
+            // FIX: Use intersection of columnOrder and available cells
+            // This handles cases where visibleColumns filters which cells are rendered
+            const availableCellKeys = Array.from(cellMap.keys());
+            const orderToUse = columnOrder.filter(colKey => cellMap.has(colKey));
+            
+            if (orderToUse.length === 0) {
+                console.warn('[reorderTableHeadersAndFilters] No matching cells found for row', rowIndex, '- skipping');
+                return;
+            }
+            
+            console.log('[reorderTableHeadersAndFilters] Row', rowIndex, 'reordering', orderToUse.length, 'of', columnOrder.length, 'columns');
+
+            // Create fragment with cells in new order
+            const cellFragment = document.createDocumentFragment();
+            let cellsReordered = 0;
+            orderToUse.forEach(colKey => {
+                const cell = cellMap.get(colKey);
+                if (cell) {
+                    cellFragment.appendChild(cell);
+                    cellsReordered++;
+                }
+            });
+
+            console.log('[reorderTableHeadersAndFilters] Reordered', cellsReordered, 'cells for row', rowIndex);
+
+            // Clear row and append cells in new order (only for available cells)
+            if (cellsReordered > 0) {
+                // Keep any cells that aren't in columnOrder (append at end)
+                const extraCells = cells.filter(cell => {
+                    const colClass = Array.from(cell.classList).find(cls => cls.startsWith('col-'));
+                    return colClass && !columnOrder.includes(colClass);
+                });
+                
+                // Clear row and append reordered cells
+                row.innerHTML = '';
+                row.appendChild(cellFragment);
+                
+                // Append any extra cells at the end
+                extraCells.forEach(cell => row.appendChild(cell));
+            }
+        });
+        console.log('[reorderTableHeadersAndFilters] ✓ Finished reordering cells for all rows');
+        } // Close hasDataRows else block
+    } else {
+        console.warn('[reorderTableHeadersAndFilters] tbody not found!');
+    }
+
+    // Update cache with the new ordered references
+    cachedHeaders = newCachedHeaders;
+    cachedFilterHeaders = newCachedFilterHeaders;
+    console.log('[reorderTableHeadersAndFilters] Cache updated - headers:', Object.keys(cachedHeaders).length);
+
+    // DEBUG: Log final header order in DOM
+    const finalTable = document.getElementById('positionsTable');
+    if (finalTable) {
+        const finalHeaders = Array.from(finalTable.querySelectorAll('thead tr th'));
+        console.log('[reorderTableHeadersAndFilters] Final DOM header order:', JSON.stringify(finalHeaders.map(h => h.id)));
+    }
+
+    // IMPORTANT: Always reapply column widths after reordering
+    // Column widths are lost when innerHTML is cleared
+    console.log('[reorderTableHeadersAndFilters] Reapplying column widths...');
+    console.log('[reorderTableHeadersAndFilters] getColumnWidths() BEFORE applyColumnWidths:', JSON.stringify(getColumnWidths()));
+    applyColumnWidths();
+    console.log('[reorderTableHeadersAndFilters] getColumnWidths() AFTER applyColumnWidths:', JSON.stringify(getColumnWidths()));
+
+    // Also apply the CSS column width variable
+    const columnWidth = getColumnWidth();
+    applyColumnWidth(columnWidth);
+
+    console.log('[reorderTableHeadersAndFilters] ✓ DONE - Headers reordered, widths reapplied');
+    console.log('[reorderTableHeadersAndFilters] ════════════════════════════════════════');
 }
 
 export function updateStats(showSymbols, allRows) {
@@ -188,16 +531,35 @@ export function updateStats(showSymbols, allRows) {
     document.getElementById('sUpnlShort').textContent = `S: ${fmtUSD(upnlShort)}`;
 }
 
+// Track last render caller for diagnostics
+let lastRenderCaller = 'unknown';
+let lastRenderTimestamp = 0;
+
 // Internal render function - does the actual work
 function _renderTableInternal() {
-    console.log(`[TableRender] ${new Date().toLocaleTimeString()} - Starting render...`);
+    const now = new Date().toLocaleTimeString();
+    lastRenderTimestamp = Date.now();
+
+    // ═══════════════════════════════════════════════════════════
+    // PERSISTENCE DEBUG: Render Application
+    // ═══════════════════════════════════════════════════════════
+    console.log(`%c[PERSISTENCE:RENDER] ═══ RENDER STARTED ═══`, 'background: #9C27B0; color: white; font-weight: bold; font-size: 12px;');
+    console.log(`%c[PERSISTENCE:RENDER] Time:`, 'color: #9C27B0;', now);
+    console.log(`%c[PERSISTENCE:RENDER] Caller:`, 'color: #9C27B0;', lastRenderCaller);
+
+    // Log current state values for persistence debugging
+    const currentColumnWidths = getColumnWidths();
+    const currentColumnOrder = getColumnOrder();
+    console.log(`%c[PERSISTENCE:RENDER] columnWidths from state:`, 'color: #9C27B0; font-weight: bold;', JSON.stringify(currentColumnWidths, null, 2));
+    console.log(`%c[PERSISTENCE:RENDER] columnOrder from state:`, 'color: #9C27B0; font-weight: bold;', JSON.stringify(currentColumnOrder, null, 2));
+
     function renderCharts() {
         renderScatterPlot();
         renderLiqScatterPlot();
     }
     const allRows = getAllRows();
     const whaleMeta = getWhaleMeta();
-    console.log('renderTable: allRows count:', allRows.length);
+    console.log('[renderTable] allRows count:', allRows.length);
     const selectedCoins = getSelectedCoins();
     console.log('renderTable: selectedCoins:', selectedCoins);
     const activeCurrency = getActiveCurrency();
@@ -207,12 +569,16 @@ function _renderTableInternal() {
     const sortDir = getSortDir();
     const visibleColumns = getVisibleColumns();
     const columnOrder = getColumnOrder();
+    console.log('[renderTable] columnOrder from state:', JSON.stringify(columnOrder));
+    console.log('[renderTable] columnWidths from state:', JSON.stringify(getColumnWidths()));
     const currentPrices = getCurrentPrices();
     const fxRates = getFxRates();
     const decimalPlaces = getDecimalPlaces();
 
     // Reorder table headers first
+    console.log(`%c[PERSISTENCE:RENDER] Calling reorderTableHeadersAndFilters()...`, 'color: #9C27B0;');
     reorderTableHeadersAndFilters(columnOrder);
+    console.log(`%c[PERSISTENCE:RENDER] reorderTableHeadersAndFilters() completed`, 'color: #9C27B0;');
 
     const sideFilter = document.getElementById('sideFilter').value;
     const addressFilter = document.getElementById('addressFilter').value.trim().toLowerCase();
@@ -571,8 +937,13 @@ function _renderTableInternal() {
                 });
             }
 
+            // Use columnOrder if available, otherwise use filteredCells keys (fallback for drag-and-drop sync)
+            const orderToUse = (columnOrder && columnOrder.length > 0)
+                ? columnOrder.filter(Key => filteredCells[Key] !== undefined)
+                : Object.keys(filteredCells);
+            
             return `<tr class="${meta.displayName ? 'row-known-address' : ''}" style="height: ${rowHeight}px">
-            ${columnOrder.filter(Key => filteredCells[Key] !== undefined).map(Key => filteredCells[Key]).join('')}
+            ${orderToUse.map(Key => filteredCells[Key]).join('')}
         </tr>`;
         };
 
@@ -593,27 +964,540 @@ function _renderTableInternal() {
         renderAggregationTableResumida(true);
 
         // Apply column widths after table is rendered
+        console.log(`%c[PERSISTENCE:RENDER] Calling applyColumnWidths()...`, 'color: #9C27B0;');
         applyColumnWidths();
+        console.log(`%c[PERSISTENCE:RENDER] applyColumnWidths() completed`, 'color: #9C27B0;');
+
         // Also apply the default column width (CSS variable)
         const columnWidth = getColumnWidth();
         applyColumnWidth(columnWidth);
 
-        // Setup drag and drop for column reordering only once
-        if (!document.querySelector('.dragging-initialized')) {
-            setTimeout(() => {
-                setupColumnDragAndDrop();
-                setupColumnResizing();
-            }, 100);
-        }
+        // Setup drag and drop and resizing for column reordering
+        // Always try to setup resizing since table might be recreated
+        setTimeout(() => {
+            setupColumnResizing();
+        }, 100);
+        
+        // Always try to setup drag and drop - the function has its own guards
+        // The setupColumnDragAndDrop function uses a module-level flag that resets on page reload
+        console.log('%c[RENDER:TABLE] Scheduling setupColumnDragAndDrop...', 'background: #FF5722; color: white; font-weight: bold;');
+        setTimeout(() => {
+            console.log('%c[RENDER:TABLE] Calling setupColumnDragAndDrop from setTimeout', 'background: #FF5722; color: white; font-weight: bold;');
+            setupColumnDragAndDrop();
+        }, 100);
+
+        console.log(`%c[PERSISTENCE:RENDER] ✓ RENDER COMPLETED`, 'background: #9C27B0; color: white; font-weight: bold;');
     }
 }
 
 // Public renderTable function - debounced version
 export function renderTable() {
+    // Capture caller information for diagnostics
+    try {
+        const stack = new Error().stack;
+        const callerLine = stack.split('\n')[2] || 'unknown';
+        lastRenderCaller = callerLine.trim().replace(/^at\s+/, '');
+    } catch (e) {
+        lastRenderCaller = 'unknown';
+    }
+    console.log('[renderTable] Public renderTable called from:', lastRenderCaller);
     debouncedRenderTable();
 }
 
 // Force immediate render (for cases where debouncing is not desired)
 export function renderTableImmediate() {
+    // Capture caller information for diagnostics
+    try {
+        const stack = new Error().stack;
+        const callerLine = stack.split('\n')[2] || 'unknown';
+        lastRenderCaller = callerLine.trim().replace(/^at\s+/, '') + ' (immediate)';
+    } catch (e) {
+        lastRenderCaller = 'unknown (immediate)';
+    }
+    console.log('[renderTableImmediate] Called from:', lastRenderCaller);
     _renderTableInternal();
+}
+
+/**
+ * Rebuilds the header cache from current DOM state
+ * Call this when headers need to be re-cached (e.g., after initial render)
+ */
+export function rebuildTableHeaderCache() {
+    rebuildHeaderCache();
+}
+
+/**
+ * Update table data only without re-rendering headers
+ * Use this when only data has changed (not filters, sort, or columns)
+ * This preserves column widths, order, and user customizations
+ */
+export function updateTableDataOnly() {
+    console.log('[updateTableDataOnly] ════════════════════════════════════════');
+    console.log('[updateTableDataOnly] CALLED at', new Date().toLocaleTimeString());
+    console.trace('[updateTableDataOnly] Stack trace:');
+    
+    const allRows = getAllRows();
+    const currentPrices = getCurrentPrices();
+    const fxRates = getFxRates();
+    const activeCurrency = getActiveCurrency();
+    const activeEntryCurrency = getActiveEntryCurrency();
+    const showSymbols = getShowSymbols();
+    const whaleMeta = getWhaleMeta();
+    const decimalPlaces = getDecimalPlaces();
+    const minBtcVolume = getMinBtcVolume();
+    const columnOrder = getColumnOrder();
+    
+    console.log('[updateTableDataOnly] columnOrder from state:', JSON.stringify(columnOrder));
+    console.log('[updateTableDataOnly] lastColumnOrder tracking:', JSON.stringify(lastColumnOrder));
+
+    // Get current displayed rows from state
+    const displayedRows = getDisplayedRows();
+    if (!displayedRows || displayedRows.length === 0) {
+        console.log('[updateTableDataOnly] No displayed rows, doing full render');
+        _renderTableInternal();
+        return;
+    }
+
+    // Validate headers are still attached to DOM
+    const headersValid = areHeadersValid();
+    const domOrderCorrect = isDOMHeaderOrderCorrect(columnOrder);
+    console.log('[updateTableDataOnly] areHeadersValid():', headersValid);
+    console.log('[updateTableDataOnly] isDOMHeaderOrderCorrect():', domOrderCorrect);
+    
+    if (!headersValid) {
+        console.log('[updateTableDataOnly] Headers detached, doing full render');
+        _renderTableInternal();
+        return;
+    }
+    
+    if (!domOrderCorrect) {
+        console.log('[updateTableDataOnly] DOM order incorrect - headers were reset!');
+    }
+
+    const table = document.getElementById('positionsTable');
+    if (!table) return;
+
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    // Update stats panel
+    try {
+        updateStats(showSymbols, displayedRows);
+    } catch (err) {
+        console.error('updateStats error (non-fatal):', err);
+    }
+
+    // Reorder headers if needed (but don't clear them)
+    reorderTableHeadersAndFilters(columnOrder);
+
+    // Get all visible rows in the DOM
+    const rows = tbody.querySelectorAll('tr');
+
+    rows.forEach((rowEl) => {
+        // Skip empty state row
+        if (rowEl.querySelector('.empty-cell')) return;
+
+        // Find the address cell to identify the row data
+        const addressCell = rowEl.querySelector('.col-address .addr-text');
+        if (!addressCell) return;
+
+        const address = addressCell.textContent?.trim();
+        if (!address) return;
+
+        // Find the coin cell to get the coin
+        const coinCell = rowEl.querySelector('.col-coin .coin-badge');
+        if (!coinCell) return;
+
+        const coinText = coinCell.textContent?.trim();
+        const coin = coinText?.split(' ')[0];
+        if (!coin) return;
+
+        // Find the matching row data
+        const rowData = displayedRows.find(r =>
+            fmtAddr(r.address) === address && r.coin === coin
+        );
+
+        if (!rowData) return;
+
+        const meta = whaleMeta[rowData.address] || {};
+        const side = rowData.side;
+        const pnlClass = rowData.unrealizedPnl >= 0 ? 'green' : 'red';
+        const fundClass = rowData.funding >= 0 ? 'green' : 'red';
+
+        // Calculate BTC volume for highlighting
+        const btcPrice = parseFloat(currentPrices['BTC'] || 0);
+        const volBTC = btcPrice > 0 ? rowData.positionValue / btcPrice : 0;
+        const isHighlighted = meta.displayName || (minBtcVolume > 0 && volBTC >= minBtcVolume);
+
+        // Get currency meta for formatting
+        const entMeta = CURRENCY_META[activeEntryCurrency] || CURRENCY_META.USD;
+        const usdSym = showSymbols ? '$' : '';
+        const entSym = showSymbols ? entMeta.symbol : '';
+
+        // Update position value cell
+        const posValueCell = rowEl.querySelector('.col-positionValue');
+        if (posValueCell) {
+            posValueCell.textContent = `${usdSym}${fmt(rowData.positionValue)}`;
+        }
+
+        // Update valueCcy cell
+        const valueCcyCell = rowEl.querySelector('.col-valueCcy');
+        if (valueCcyCell) {
+            const ccyVal = convertToActiveCcy(rowData.positionValue, null, activeCurrency, fxRates);
+            valueCcyCell.textContent = fmtCcy(ccyVal, null, activeCurrency, showSymbols);
+            if (isHighlighted) {
+                valueCcyCell.style.fontWeight = '600';
+            }
+        }
+
+        // Update entryCcy cell
+        const entryCcyCell = rowEl.querySelector('.col-entryCcy');
+        if (entryCcyCell) {
+            const entVal = getCorrelatedEntry(rowData, activeEntryCurrency, currentPrices, fxRates);
+            entryCcyCell.textContent = entSym + entVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (isHighlighted) {
+                entryCcyCell.style.fontWeight = '600';
+            }
+        }
+
+        // Update unrealizedPnl cell
+        const pnlCell = rowEl.querySelector('.col-unrealizedPnl');
+        if (pnlCell) {
+            pnlCell.textContent = fmtUSD(rowData.unrealizedPnl);
+            pnlCell.className = `mono col-unrealizedPnl ${pnlClass}`;
+            if (isHighlighted) {
+                pnlCell.style.fontWeight = '600';
+            }
+        }
+
+        // Update funding cell
+        const fundingCell = rowEl.querySelector('.col-funding');
+        if (fundingCell) {
+            fundingCell.textContent = fmtUSD(rowData.funding);
+            fundingCell.className = `mono col-funding ${fundClass}`;
+        }
+
+        // Update liqPx cell
+        const liqPxCell = rowEl.querySelector('.col-liqPx');
+        if (liqPxCell && rowData.liquidationPx > 0) {
+            const liqPrice = getCorrelatedPrice(rowData, rowData.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
+            liqPxCell.textContent = entSym + liqPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (isHighlighted) {
+                liqPxCell.style.fontWeight = '600';
+            }
+        }
+
+        // Update distToLiq cell
+        const distCell = rowEl.querySelector('.col-distToLiq');
+        if (distCell && rowData.distPct !== null) {
+            const pct = rowData.distPct;
+            const barClass = pct > 30 ? 'safe' : pct > 10 ? 'warn' : 'danger';
+            const barW = Math.min(pct, 100).toFixed(0);
+            const liqStr = rowData.liquidationPx > 0 ? (showSymbols ? '$' : '') + rowData.liquidationPx.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—';
+
+            const pctSpan = distCell.querySelector('.liq-pct');
+            if (pctSpan) {
+                pctSpan.textContent = `${pct.toFixed(0)}%`;
+                pctSpan.className = `liq-pct ${barClass === 'safe' ? 'green' : barClass === 'warn' ? '' : 'red'}`;
+                if (barClass === 'warn') {
+                    pctSpan.style.color = 'var(--orange)';
+                } else {
+                    pctSpan.style.color = '';
+                }
+            }
+
+            const liqPriceSpan = distCell.querySelector('.liq-price');
+            if (liqPriceSpan) {
+                liqPriceSpan.textContent = liqStr;
+            }
+
+            const liqBar = distCell.querySelector('.liq-bar');
+            if (liqBar) {
+                liqBar.style.width = `${barW}%`;
+                liqBar.className = `liq-bar ${barClass}`;
+            }
+        }
+
+        // Update accountValue cell
+        const accValueCell = rowEl.querySelector('.col-accountValue');
+        if (accValueCell) {
+            accValueCell.textContent = `${usdSym}${fmt(meta.accountValue || 0)}`;
+        }
+    });
+
+    // Update aggregation tables
+    try {
+        renderAggregationTable(true);
+        renderAggregationTableResumida(true);
+    } catch (err) {
+        console.error('Aggregation table update error (non-fatal):', err);
+    }
+
+    console.log('[updateTableDataOnly] Table data updated, headers preserved');
+}
+
+/**
+ * Update only price-dependent data in the table without re-rendering headers
+ * This is used by the price ticker to avoid overwriting column width/order settings
+ */
+export function updateTablePriceData() {
+    const allRows = getAllRows();
+    const currentPrices = getCurrentPrices();
+    const fxRates = getFxRates();
+    const activeCurrency = getActiveCurrency();
+    const activeEntryCurrency = getActiveEntryCurrency();
+    const showSymbols = getShowSymbols();
+    const whaleMeta = getWhaleMeta();
+    const decimalPlaces = getDecimalPlaces();
+    const minBtcVolume = getMinBtcVolume();
+
+    // Get current displayed rows from state
+    const displayedRows = getDisplayedRows();
+    if (!displayedRows || displayedRows.length === 0) return;
+
+    const table = document.getElementById('positionsTable');
+    if (!table) return;
+
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    // Update stats panel
+    try {
+        updateStats(showSymbols, displayedRows);
+    } catch (err) {
+        console.error('updateStats error (non-fatal):', err);
+    }
+
+    // Get all visible rows in the DOM
+    const rows = tbody.querySelectorAll('tr');
+
+    rows.forEach((rowEl) => {
+        // Skip empty state row
+        if (rowEl.querySelector('.empty-cell')) return;
+
+        // Find the address cell to identify the row data
+        const addressCell = rowEl.querySelector('.col-address .addr-text');
+        if (!addressCell) return;
+
+        const address = addressCell.textContent?.trim();
+        if (!address) return;
+
+        // Find the coin cell to get the coin
+        const coinCell = rowEl.querySelector('.col-coin .coin-badge');
+        if (!coinCell) return;
+
+        const coinText = coinCell.textContent?.trim();
+        const coin = coinText?.split(' ')[0];
+        if (!coin) return;
+
+        // Find the matching row data
+        const rowData = displayedRows.find(r =>
+            fmtAddr(r.address) === address && r.coin === coin
+        );
+
+        if (!rowData) return;
+
+        const meta = whaleMeta[rowData.address] || {};
+        const side = rowData.side;
+        const pnlClass = rowData.unrealizedPnl >= 0 ? 'green' : 'red';
+        const fundClass = rowData.funding >= 0 ? 'green' : 'red';
+
+        // Calculate BTC volume for highlighting
+        const btcPrice = parseFloat(currentPrices['BTC'] || 0);
+        const volBTC = btcPrice > 0 ? rowData.positionValue / btcPrice : 0;
+        const isHighlighted = meta.displayName || (minBtcVolume > 0 && volBTC >= minBtcVolume);
+
+        // Get currency meta for formatting
+        const entMeta = CURRENCY_META[activeEntryCurrency] || CURRENCY_META.USD;
+        const usdSym = showSymbols ? '$' : '';
+        const entSym = showSymbols ? entMeta.symbol : '';
+
+        // Update position value cell
+        const posValueCell = rowEl.querySelector('.col-positionValue');
+        if (posValueCell) {
+            posValueCell.textContent = `${usdSym}${fmt(rowData.positionValue)}`;
+        }
+
+        // Update valueCcy cell
+        const valueCcyCell = rowEl.querySelector('.col-valueCcy');
+        if (valueCcyCell) {
+            const ccyVal = convertToActiveCcy(rowData.positionValue, null, activeCurrency, fxRates);
+            valueCcyCell.textContent = fmtCcy(ccyVal, null, activeCurrency, showSymbols);
+            if (isHighlighted) {
+                valueCcyCell.style.fontWeight = '600';
+            }
+        }
+
+        // Update entryCcy cell
+        const entryCcyCell = rowEl.querySelector('.col-entryCcy');
+        if (entryCcyCell) {
+            const entVal = getCorrelatedEntry(rowData, activeEntryCurrency, currentPrices, fxRates);
+            entryCcyCell.textContent = entSym + entVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (isHighlighted) {
+                entryCcyCell.style.fontWeight = '600';
+            }
+        }
+
+        // Update unrealizedPnl cell
+        const pnlCell = rowEl.querySelector('.col-unrealizedPnl');
+        if (pnlCell) {
+            pnlCell.textContent = fmtUSD(rowData.unrealizedPnl);
+            pnlCell.className = `mono col-unrealizedPnl ${pnlClass}`;
+            if (isHighlighted) {
+                pnlCell.style.fontWeight = '600';
+            }
+        }
+
+        // Update funding cell
+        const fundingCell = rowEl.querySelector('.col-funding');
+        if (fundingCell) {
+            fundingCell.textContent = fmtUSD(rowData.funding);
+            fundingCell.className = `mono col-funding ${fundClass}`;
+        }
+
+        // Update liqPx cell
+        const liqPxCell = rowEl.querySelector('.col-liqPx');
+        if (liqPxCell && rowData.liquidationPx > 0) {
+            const liqPrice = getCorrelatedPrice(rowData, rowData.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
+            liqPxCell.textContent = entSym + liqPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (isHighlighted) {
+                liqPxCell.style.fontWeight = '600';
+            }
+        }
+
+        // Update distToLiq cell
+        const distCell = rowEl.querySelector('.col-distToLiq');
+        if (distCell && rowData.distPct !== null) {
+            const pct = rowData.distPct;
+            const barClass = pct > 30 ? 'safe' : pct > 10 ? 'warn' : 'danger';
+            const barW = Math.min(pct, 100).toFixed(0);
+            const liqStr = rowData.liquidationPx > 0 ? (showSymbols ? '$' : '') + rowData.liquidationPx.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—';
+
+            const pctSpan = distCell.querySelector('.liq-pct');
+            if (pctSpan) {
+                pctSpan.textContent = `${pct.toFixed(0)}%`;
+                pctSpan.className = `liq-pct ${barClass === 'safe' ? 'green' : barClass === 'warn' ? '' : 'red'}`;
+                if (barClass === 'warn') {
+                    pctSpan.style.color = 'var(--orange)';
+                } else {
+                    pctSpan.style.color = '';
+                }
+            }
+
+            const liqPriceSpan = distCell.querySelector('.liq-price');
+            if (liqPriceSpan) {
+                liqPriceSpan.textContent = liqStr;
+            }
+
+            const liqBar = distCell.querySelector('.liq-bar');
+            if (liqBar) {
+                liqBar.style.width = `${barW}%`;
+                liqBar.className = `liq-bar ${barClass}`;
+            }
+        }
+
+        // Update accountValue cell
+        const accValueCell = rowEl.querySelector('.col-accountValue');
+        if (accValueCell) {
+            accValueCell.textContent = `${usdSym}${fmt(meta.accountValue || 0)}`;
+        }
+    });
+
+    // Update aggregation tables
+    try {
+        renderAggregationTable(true);
+        renderAggregationTableResumida(true);
+    } catch (err) {
+        console.error('Aggregation table update error (non-fatal):', err);
+    }
+}
+
+/**
+ * Diagnostic function to help debug column state issues
+ * Call this from browser console: diagnoseColumnState()
+ */
+export async function diagnoseColumnState() {
+    console.log('%c[DIAGNOSE] ════════════════════════════════════════════════════════════', 'background: #9C27B0; color: white; font-size: 14px; font-weight: bold;');
+
+    // Import state getters dynamically to avoid circular dependency issues
+    const state = await import('../state.js');
+
+    const columnOrder = state.getColumnOrder ? state.getColumnOrder() : [];
+    const columnWidths = state.getColumnWidths ? state.getColumnWidths() : {};
+    const visibleColumns = state.getVisibleColumns ? state.getVisibleColumns() : [];
+
+    console.log('%cColumn Order:', 'font-weight: bold; color: #2196F3;', columnOrder);
+    console.log('%cVisible Columns:', 'font-weight: bold; color: #2196F3;', visibleColumns);
+    console.log('%cColumn Widths:', 'font-weight: bold; color: #2196F3;', columnWidths);
+
+    // Check cached headers
+    console.log('%cCached Headers:', 'font-weight: bold; color: #FF9800;');
+    if (cachedHeaders) {
+        const headerKeys = Object.keys(cachedHeaders);
+        console.log('  - Count:', headerKeys.length);
+        headerKeys.forEach(key => {
+            const th = cachedHeaders[key];
+            const isConnected = th.isConnected || document.body.contains(th);
+            const width = th.style.width;
+            console.log(`  - ${key}: inDOM=${isConnected}, width=${width}`);
+        });
+    } else {
+        console.log('  - cachedHeaders is NULL');
+    }
+
+    // Check cached filter headers
+    console.log('%cCached Filter Headers:', 'font-weight: bold; color: #FF9800;');
+    if (cachedFilterHeaders) {
+        console.log('  - Count:', Object.keys(cachedFilterHeaders).length);
+    } else {
+        console.log('  - cachedFilterHeaders is NULL');
+    }
+
+    // Check DOM headers
+    const table = document.getElementById('positionsTable');
+    if (table) {
+        const headerRow = table.querySelector('thead tr');
+        if (headerRow) {
+            const domHeaders = Array.from(headerRow.querySelectorAll('th'));
+            console.log('%cDOM Headers:', 'font-weight: bold; color: #4CAF50;', domHeaders.length);
+            domHeaders.forEach((th, i) => {
+                const id = th.id || 'no-id';
+                const width = th.style.width;
+                const rect = th.getBoundingClientRect();
+                console.log(`  [${i}] ${id}: width=${width}, actual=${rect.width.toFixed(1)}px`);
+            });
+        } else {
+            console.log('%cDOM Headers: Header row not found!', 'color: red;');
+        }
+    } else {
+        console.log('%cDOM Headers: Table not found!', 'color: red;');
+    }
+
+    // Last render info
+    console.log('%cLast Render:', 'font-weight: bold; color: #E91E63;');
+    console.log('  - Caller:', lastRenderCaller);
+    console.log('  - Timestamp:', lastRenderTimestamp ? new Date(lastRenderTimestamp).toLocaleTimeString() : 'never');
+    console.log('  - Seconds ago:', lastRenderTimestamp ? ((Date.now() - lastRenderTimestamp) / 1000).toFixed(1) : 'N/A');
+
+    // Tracking variables
+    console.log('%cTracking Variables:', 'font-weight: bold; color: #607D8B;');
+    console.log('  - lastColumnOrder:', lastColumnOrder);
+    console.log('  - lastVisibleColumns:', lastVisibleColumns);
+
+    console.log('%c[DIAGNOSE] ════════════════════════════════════════════════════════════', 'background: #9C27B0; color: white; font-size: 14px; font-weight: bold;');
+
+    return {
+        columnOrder,
+        visibleColumns,
+        columnWidths,
+        cachedHeaders: cachedHeaders ? Object.keys(cachedHeaders) : null,
+        cachedFilterHeaders: cachedFilterHeaders ? Object.keys(cachedFilterHeaders) : null,
+        lastRenderCaller,
+        lastRenderTimestamp
+    };
+}
+
+// Make it available globally for console debugging
+if (typeof window !== 'undefined') {
+    window.diagnoseColumnState = () => diagnoseColumnState().then(result => result);
 }

@@ -307,10 +307,11 @@ import {
     getColumnOrder, getVisibleColumns, setPriceUpdateInterval, setActiveCurrency,
     setActiveEntryCurrency, setDecimalPlaces, setFontSize, setFontSizeKnown, setLeverageColors, setGridSpacing, setMinBtcVolume, getMinBtcVolume, setAggInterval, setLiquidationTableHeight, setAggVolumeUnit, getAggVolumeUnit, setIsZenMode, getIsZenMode,
     setShowLiquidationSymbols, getShowLiquidationSymbols, setLiquidationZoneColors, getLiquidationZoneColors, setLiquidationHighlightColor, getLiquidationHighlightColor, setTooltipDelay,
-    getColumnWidths, setColumnWidths, setRowHeight, setUseCompactFormat, getUseCompactFormat
+    getColumnWidths, setColumnWidths, setRowHeight, setUseCompactFormat, getUseCompactFormat,
+    getAggColumnOrder, setAggColumnOrder, getAggColumnOrderResumida, setAggColumnOrderResumida
 } from '../state.js';
 import { COLUMN_DEFS } from '../config.js';
-import { renderTable, updateStats } from '../ui/table.js';
+import { renderTable, renderTableImmediate, rebuildTableHeaderCache, updateStats } from '../ui/table.js';
 import { renderAggregationTable, renderAggregationTableResumida, scrollToCurrentPriceRange as aggScrollToRange, scrollToCurrentPriceRangeResumida } from '../ui/aggregation.js';
 import { renderQuotesPanel, updateRankingPanel } from '../ui/panels.js';
 import { saveSettings } from '../storage/settings.js';
@@ -927,12 +928,15 @@ export function updateColumnSelectDisplay() {
 }
 
 export function applyColumnOrder() {
+    console.log('%c[HANDLERS:applyColumnOrder] ═══ CALLED ═══', 'background: #795548; color: white; font-weight: bold; font-size: 12px;');
     // Apply column order to table
     // This function is called after loading settings
     // The actual application will be handled by renderTable()
     // which reads from getColumnOrder()
 
     // Setup drag and drop for column reordering
+    // Note: setupColumnDragAndDrop has its own guard to prevent double initialization
+    console.log('[HANDLERS:applyColumnOrder] About to call setupColumnDragAndDrop...');
     setupColumnDragAndDrop();
     setupColumnResizing();
 }
@@ -946,28 +950,54 @@ export function setupColumnResizing() {
 
     tables.forEach(({ id, tableType }) => {
         const table = document.getElementById(id);
-        if (!table) return;
+        if (!table) {
+            console.log(`[setupColumnResizing] Table ${id} NOT FOUND`);
+            return;
+        }
 
         const ths = table.querySelectorAll('th');
-        if (!ths || ths.length === 0) return;
+        if (!ths || ths.length === 0) {
+            console.log(`[setupColumnResizing] Table ${id} has no headers`);
+            return;
+        }
+
+        console.log(`[setupColumnResizing] Setting up ${ths.length} resizers for table ${id} (type: ${tableType})`);
+
+        let initializedCount = 0;
+        let skippedCount = 0;
 
         ths.forEach((th) => {
-            if (!th) return;
+            if (!th) {
+                skippedCount++;
+                return;
+            }
 
             const resizer = th.querySelector('.resizer');
-            if (!resizer) return;
+            if (!resizer) {
+                console.log(`[setupColumnResizing] No resizer found for th: ${th.id}`);
+                skippedCount++;
+                return;
+            }
 
-            if (resizer.dataset.initialized) return;
+            if (resizer.dataset.initialized) {
+                skippedCount++;
+                return;
+            }
             resizer.dataset.initialized = 'true';
+            initializedCount++;
 
-            resizer.addEventListener('mousedown', (e) => initResize(e, tableType));
+            resizer.addEventListener('mousedown', (e) => {
+                console.log(`[setupColumnResizing] Resize START on ${id} (type: ${tableType}), th: ${th.id}`);
+                initResize(e, tableType);
+            });
             resizer.addEventListener('click', e => e.stopPropagation());
         });
+
+        console.log(`[setupColumnResizing] Table ${id}: ${initializedCount} resizers initialized, ${skippedCount} skipped`);
     });
 }
 
 function initResize(e, tableType) {
-    e.stopPropagation();
     e.preventDefault();
 
     const resizer = e.target;
@@ -979,6 +1009,14 @@ function initResize(e, tableType) {
 
     // Get column key for persistence
     const colKey = th.id.replace('th-', '').replace('agg-', '');
+
+    // DEBUG: Log table identification
+    console.log(`%c[initResize] Table identification:`, 'color: #ff5722; font-weight: bold;', {
+        tableType: tableType,
+        thId: th.id,
+        colKey: colKey,
+        storageKey: `${tableType}_${colKey}`
+    });
 
     document.body.classList.add('resizing');
     th.classList.add('resizing-active');
@@ -1002,6 +1040,11 @@ function initResize(e, tableType) {
     };
 
     const onMouseUp = () => {
+        // ═══════════════════════════════════════════════════════════
+        // PERSISTENCE DEBUG: Resize Save
+        // ═══════════════════════════════════════════════════════════
+        console.log(`%c[PERSISTENCE:RESIZE] ═══ RESIZE ENDED ═══`, 'background: #ff9800; color: white; font-weight: bold; font-size: 12px;');
+
         document.body.classList.remove('resizing');
         th.classList.remove('resizing-active');
         document.removeEventListener('mousemove', onMouseMove);
@@ -1010,23 +1053,51 @@ function initResize(e, tableType) {
         // Save new width with table-specific key
         const columnWidths = getColumnWidths() || {};
         const storageKey = `${tableType}_${colKey}`;
-        columnWidths[storageKey] = parseInt(th.style.width);
-        //console.log('[DEBUG] Saving column width:', storageKey, '=', columnWidths[storageKey]);
+        const finalWidth = parseInt(th.style.width);
+        columnWidths[storageKey] = finalWidth;
+
+        console.log(`%c[PERSISTENCE:RESIZE] Table:`, 'color: #ff9800; font-weight: bold;', tableType);
+        console.log(`%c[PERSISTENCE:RESIZE] Column:`, 'color: #ff9800; font-weight: bold;', colKey);
+        console.log(`%c[PERSISTENCE:RESIZE] Storage Key:`, 'color: #ff9800; font-weight: bold;', storageKey);
+        console.log(`%c[PERSISTENCE:RESIZE] New Width:`, 'color: #ff9800; font-weight: bold;', finalWidth + 'px');
+        console.log(`%c[PERSISTENCE:RESIZE] Full columnWidths object:`, 'color: #ff9800;', JSON.stringify(columnWidths, null, 2));
+
         setColumnWidths(columnWidths);
+        console.log(`%c[PERSISTENCE:RESIZE] setColumnWidths() called`, 'color: #ff9800;');
+
         saveSettings(null, null, null, null, null, true); // Save immediately for column resize
+        console.log(`%c[PERSISTENCE:RESIZE] saveSettings() called with immediate=true`, 'color: #ff9800; font-weight: bold;');
+        console.log(`%c[PERSISTENCE:RESIZE] ✓ DONE`, 'background: #ff9800; color: white; font-weight: bold;');
     };
 
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
 }
 
+// Use a module-level variable instead of DOM marker to avoid bfcache issues
+let dragAndDropInitialized = false;
+
 export function setupColumnDragAndDrop() {
-    if (document.querySelector('.dragging-initialized')) {
-        console.log('Drag and drop already initialized');
+    console.log('%c[DRAG-DROP:INIT] ═══ setupColumnDragAndDrop CALLED ═══', 'background: #673AB7; color: white; font-weight: bold; font-size: 12px;');
+    console.log('[DRAG-DROP:INIT] Timestamp:', new Date().toISOString());
+    console.log('[DRAG-DROP:INIT] dragAndDropInitialized flag:', dragAndDropInitialized);
+    
+    // Check both the JS variable AND the DOM marker (for backwards compatibility)
+    const existingMarker = document.querySelector('.dragging-initialized');
+    console.log('[DRAG-DROP:INIT] .dragging-initialized marker found?', !!existingMarker);
+    
+    if (dragAndDropInitialized) {
+        console.log('%c[DRAG-DROP:INIT] ✗ EARLY RETURN - Drag and drop already initialized (JS flag)', 'background: #f44336; color: white; font-weight: bold;');
         return;
     }
 
-    console.log('Setting up column drag and drop...');
+    // Also remove any stale DOM marker from bfcache
+    if (existingMarker) {
+        console.log('%c[DRAG-DROP:INIT] Removing stale DOM marker from bfcache...', 'background: #FF9800; color: white; font-weight: bold;');
+        existingMarker.remove();
+    }
+
+    console.log('%c[DRAG-DROP:INIT] ✓ Proceeding with initialization...', 'background: #4CAF50; color: white; font-weight: bold;');
     const tableHeaders = document.querySelectorAll('th[id^="th-"]');
     console.log('Found table headers:', tableHeaders.length);
 
@@ -1063,6 +1134,28 @@ export function setupColumnDragAndDrop() {
         dragStartY = e.clientY;
         sourceTable = th.closest('table');
         draggedColumnIndex = Array.from(th.parentElement.children).indexOf(th);
+
+        // ═══════════════════════════════════════════════════════════
+        // DEBUG: Log initial state for ALL tables
+        // ═══════════════════════════════════════════════════════════
+        const tableId = sourceTable?.id;
+        const isAggTable = tableId === 'liquidationTableFull' || tableId === 'liquidationTableSummary';
+        
+        console.log('%c[DRAG-DROP:START] ═══ DRAG START ═══', 'background: #2196F3; color: white; font-weight: bold; font-size: 12px;');
+        console.log('%c[DRAG-DROP:START] Dragged column:', 'color: #2196F3; font-weight: bold;', th.id);
+        console.log('%c[DRAG-DROP:START] Table ID:', 'color: #2196F3; font-weight: bold;', tableId);
+        console.log('%c[DRAG-DROP:START] Is Aggregation Table?', 'color: #2196F3; font-weight: bold;', isAggTable);
+        
+        if (isAggTable) {
+            console.log('%c[DRAG-DROP:START] ═══ AGGREGATION TABLE DRAG ═══', 'background: #FF9800; color: white; font-weight: bold;');
+            console.log('%c[DRAG-DROP:START] aggColumnOrder (Full):', 'color: #FF9800;', JSON.stringify(getAggColumnOrder()));
+            console.log('%c[DRAG-DROP:START] aggColumnOrderResumida:', 'color: #FF9800;', JSON.stringify(getAggColumnOrderResumida()));
+        } else {
+            console.log('%c[DRAG-DROP:START] ColumnOrder (Positions):', 'color: #2196F3;', JSON.stringify(getColumnOrder()));
+        }
+        
+        const headers = Array.from(th.parentElement.children).map(h => h.id);
+        console.log('%c[DRAG-DROP:START] Current DOM headers order:', 'color: #2196F3;', JSON.stringify(headers));
 
         th.classList.add('dragging');
 
@@ -1177,71 +1270,134 @@ export function setupColumnDragAndDrop() {
 
     // Global mouse up for drop
     document.addEventListener('mouseup', (e) => {
-        if (!isDragging || !draggedTh) return;
+        console.log('%c[DRAG-DROP:DROP] ═══ MOUSEUP EVENT ═══', 'background: #9C27B0; color: white; font-weight: bold; font-size: 12px;');
+        console.log('[DRAG-DROP:DROP] isDragging:', isDragging);
+        console.log('[DRAG-DROP:DROP] draggedTh:', draggedTh ? draggedTh.id : 'null');
+        console.log('[DRAG-DROP:DROP] sourceTable:', sourceTable ? sourceTable.id : 'null');
+        
+        if (!isDragging || !draggedTh) {
+            console.log('%c[DRAG-DROP:DROP] ✗ Early return - not dragging or no draggedTh', 'color: #f44336;');
+            return;
+        }
 
         // Find drop target
         const targetElement = document.elementFromPoint(e.clientX, e.clientY);
         const targetTh = targetElement?.closest('th[id^="th-"]');
+        
+        console.log('[DRAG-DROP:DROP] targetElement:', targetElement ? targetElement.tagName : 'null');
+        console.log('[DRAG-DROP:DROP] targetTh:', targetTh ? targetTh.id : 'null');
 
         if (targetTh && targetTh !== draggedTh) {
             const targetTable = targetTh.closest('table');
             
+            console.log('[DRAG-DROP:DROP] targetTable:', targetTable ? targetTable.id : 'null');
+            console.log('[DRAG-DROP:DROP] sourceTable:', sourceTable ? sourceTable.id : 'null');
+            console.log('[DRAG-DROP:DROP] Tables match?', targetTable === sourceTable);
+            
             // Only allow drop within the same table
             if (targetTable === sourceTable) {
-                console.log('Drop completed:', draggedTh.id, '->', targetTh.id);
+                console.log('%c[DRAG-DROP:DROP] ✓ Drop completed: ' + draggedTh.id + ' -> ' + targetTh.id, 'background: #4CAF50; color: white; font-weight: bold;');
 
                 const draggedColumnId = draggedTh.id.replace('th-', '').replace('agg-', '');
                 const targetColumnId = targetTh.id.replace('th-', '').replace('agg-', '');
                 console.log('Dragged:', draggedColumnId, 'Target:', targetColumnId);
 
                 // Check if this is positions table or aggregation table
+                console.log('%c[DRAG-DROP:DROP] Checking table type...', 'background: #9C27B0; color: white; font-weight: bold;');
+                console.log('%c[DRAG-DROP:DROP] sourceTable.id:', 'color: #9C27B0;', sourceTable.id);
+                console.log('%c[DRAG-DROP:DROP] Is positionsTable?', 'color: #9C27B0;', sourceTable.id === 'positionsTable');
+                
                 if (sourceTable.id === 'positionsTable') {
                     // Get current column order
                     const currentOrder = getColumnOrder();
-                    console.log('Current order:', currentOrder);
+
+                    // ═══════════════════════════════════════════════════════════
+                    // PERSISTENCE DEBUG: Drag-and-Drop Save
+                    // ═══════════════════════════════════════════════════════════
+                    console.log(`%c[PERSISTENCE:DRAG-DROP] ═══ DROP COMPLETED ═══`, 'background: #2196F3; color: white; font-weight: bold; font-size: 12px;');
+                    console.log(`%c[PERSISTENCE:DRAG-DROP] Table:`, 'color: #2196F3; font-weight: bold;', 'positionsTable');
+                    console.log(`%c[PERSISTENCE:DRAG-DROP] Dragged Column:`, 'color: #2196F3; font-weight: bold;', draggedColumnId);
+                    console.log(`%c[PERSISTENCE:DRAG-DROP] Target Column:`, 'color: #2196F3; font-weight: bold;', targetColumnId);
+                    console.log(`%c[PERSISTENCE:DRAG-DROP] Current Order (before):`, 'color: #2196F3;', JSON.stringify(currentOrder));
 
                     const draggedIndex = currentOrder.indexOf(`col-${draggedColumnId}`);
                     const targetIndex = currentOrder.indexOf(`col-${targetColumnId}`);
-                    console.log('Indices - Dragged:', draggedIndex, 'Target:', targetIndex);
+                    console.log(`%c[PERSISTENCE:DRAG-DROP] Dragged Index:`, 'color: #2196F3;', draggedIndex);
+                    console.log(`%c[PERSISTENCE:DRAG-DROP] Target Index:`, 'color: #2196F3;', targetIndex);
 
                     if (draggedIndex !== -1 && targetIndex !== -1) {
                         // Reorder columns
                         const newOrder = [...currentOrder];
                         const [draggedColumn] = newOrder.splice(draggedIndex, 1);
                         newOrder.splice(targetIndex, 0, draggedColumn);
-                        console.log('New order:', newOrder);
+                        console.log(`%c[PERSISTENCE:DRAG-DROP] New Order (after):`, 'color: #2196F3; font-weight: bold;', JSON.stringify(newOrder));
 
                         // Update state and save
                         setColumnOrder(newOrder);
-                        saveSettings(null, null, null, null, null, true); // Save immediately for column reorder
-                        console.log('Order saved');
+                        const orderAfterSet = getColumnOrder();
+                        console.log(`%c[PERSISTENCE:DRAG-DROP] setColumnOrder() called:`, 'color: #2196F3;', JSON.stringify(orderAfterSet));
 
-                        // Re-render table to apply new column order
-                        renderTable();
-                        console.log('Table re-rendered');
+                        // CRITICAL: Ensure columnOrder is saved
+                        console.log(`%c[PERSISTENCE:DRAG-DROP] About to call saveSettings...`, 'background: #ff0000; color: white; font-weight: bold;');
+                        saveSettings(null, null, null, null, null, true); // Save immediately for column reorder
+                        console.log(`%c[PERSISTENCE:DRAG-DROP] saveSettings() called with immediate=true`, 'color: #2196F3; font-weight: bold;');
+                        console.log(`%c[PERSISTENCE:DRAG-DROP] Column order saved:`, 'color: #00ff00; font-weight: bold;', JSON.stringify(orderAfterSet));
+
+                        // IMPORTANT: Invalidate header cache to force rebuild with new order
+                        rebuildTableHeaderCache();
+                        console.log(`%c[PERSISTENCE:DRAG-DROP] Header cache invalidated`, 'color: #2196F3;');
+
+                        // Re-render table IMMEDIATELY to apply new column order
+                        renderTableImmediate();
+                        console.log(`%c[PERSISTENCE:DRAG-DROP] renderTableImmediate() called`, 'color: #2196F3;');
+                        console.log(`%c[PERSISTENCE:DRAG-DROP] ✓ DONE`, 'background: #2196F3; color: white; font-weight: bold;');
+                    } else {
+                        console.warn(`%c[PERSISTENCE:DRAG-DROP] ✗ FAILED - Invalid indices`, 'background: #f44336; color: white; font-weight: bold;', 'DraggedIndex:', draggedIndex, 'TargetIndex:', targetIndex);
                     }
                 } else {
-                    // For aggregation tables, reorder DOM elements directly
+                    // ═══════════════════════════════════════════════════════════
+                    // PERSISTENCE DEBUG: Aggregation Table Drop
+                    // ═══════════════════════════════════════════════════════════
+                    console.log('%c[PERSISTENCE:AGG-DROP] ═══ DROP (aggregation table) ═══', 'background: #FF9800; color: white; font-weight: bold; font-size: 12px;');
+                    console.log('%c[PERSISTENCE:AGG-DROP] Table ID:', 'color: #FF9800; font-weight: bold;', sourceTable.id);
+                    console.log('%c[PERSISTENCE:AGG-DROP] Dragged:', 'color: #FF9800;', draggedTh.id);
+                    console.log('%c[PERSISTENCE:AGG-DROP] Target:', 'color: #FF9800;', targetTh.id);
+                    
                     const thead = sourceTable.querySelector('thead tr');
                     const tbody = sourceTable.querySelector('tbody');
                     
+                    console.log('%c[PERSISTENCE:AGG-DROP] thead found:', 'color: #FF9800;', !!thead);
+                    console.log('%c[PERSISTENCE:AGG-DROP] tbody found:', 'color: #FF9800;', !!tbody);
+
                     if (thead) {
                         const allThs = Array.from(thead.querySelectorAll('th'));
                         const draggedIdx = allThs.indexOf(draggedTh);
                         const targetIdx = allThs.indexOf(targetTh);
-                        
+                        console.log('%c[PERSISTENCE:AGG-DROP] draggedIdx:', 'color: #FF9800;', draggedIdx);
+                        console.log('%c[PERSISTENCE:AGG-DROP] targetIdx:', 'color: #FF9800;', targetIdx);
+                        console.log('%c[PERSISTENCE:AGG-DROP] Total headers:', 'color: #FF9800;', allThs.length);
+
                         if (draggedIdx !== -1 && targetIdx !== -1) {
                             // Move the header
+                            console.log('%c[PERSISTENCE:AGG-DROP] Moving header in DOM...', 'color: #FF9800;');
                             if (draggedIdx < targetIdx) {
                                 targetTh.after(draggedTh);
                             } else {
                                 targetTh.before(draggedTh);
                             }
-                            
+                            console.log('%c[PERSISTENCE:AGG-DROP] ✓ Header moved in DOM', 'color: #4CAF50;');
+
                             // Move all corresponding td cells in each row
                             if (tbody) {
                                 const rows = tbody.querySelectorAll('tr');
-                                rows.forEach(row => {
+                                console.log('%c[PERSISTENCE:AGG-DROP] Processing', 'color: #FF9800;', rows.length, 'rows');
+                                let cellsMoved = 0;
+                                rows.forEach((row, rowIdx) => {
+                                    // SKIP virtual scroll spacer rows - they have only 1 cell with colspan
+                                    if (row.classList.contains('vs-top-spacer') || row.classList.contains('vs-bottom-spacer')) {
+                                        return;
+                                    }
+                                    
                                     const allTds = Array.from(row.querySelectorAll('td'));
                                     // Verify indices are valid for this row
                                     if (draggedIdx < allTds.length && targetIdx < allTds.length) {
@@ -1253,13 +1409,49 @@ export function setupColumnDragAndDrop() {
                                             } else {
                                                 targetTd.before(draggedTd);
                                             }
+                                            cellsMoved++;
                                         }
                                     }
                                 });
+                                console.log('%c[PERSISTENCE:AGG-DROP] Cells moved in', 'color: #FF9800;', cellsMoved, 'rows');
                             }
+
+                            // ═══════════════════════════════════════════════════════════
+                            // CRITICAL: Save the new column order for aggregation tables
+                            // ═══════════════════════════════════════════════════════════
+                            const newHeaderOrder = Array.from(thead.querySelectorAll('th')).map(th => th.id);
+                            console.log('%c[PERSISTENCE:AGG-DROP] New header order from DOM:', 'background: #2196F3; color: white; font-weight: bold;', JSON.stringify(newHeaderOrder));
+
+                            // Determine which state function to use
+                            console.log('%c[PERSISTENCE:AGG-DROP] Determining table type...', 'color: #FF9800;');
+                            console.log('%c[PERSISTENCE:AGG-DROP] sourceTable.id:', 'color: #FF9800;', sourceTable.id);
+                            console.log('%c[PERSISTENCE:AGG-DROP] Is liquidationTableFull?', 'color: #FF9800;', sourceTable.id === 'liquidationTableFull');
+                            console.log('%c[PERSISTENCE:AGG-DROP] Is liquidationTableSummary?', 'color: #FF9800;', sourceTable.id === 'liquidationTableSummary');
                             
-                            saveSettings();
+                            if (sourceTable.id === 'liquidationTableFull') {
+                                console.log('%c[PERSISTENCE:AGG-DROP] Calling setAggColumnOrder()...', 'background: #ff0000; color: white; font-weight: bold;');
+                                setAggColumnOrder(newHeaderOrder);
+                                const savedOrder = getAggColumnOrder();
+                                console.log('%c[PERSISTENCE:AGG-DROP] ✓ setAggColumnOrder() called. Current state:', 'background: #4CAF50; color: white; font-weight: bold;', JSON.stringify(savedOrder));
+                            } else if (sourceTable.id === 'liquidationTableSummary') {
+                                console.log('%c[PERSISTENCE:AGG-DROP] Calling setAggColumnOrderResumida()...', 'background: #ff0000; color: white; font-weight: bold;');
+                                setAggColumnOrderResumida(newHeaderOrder);
+                                const savedOrder = getAggColumnOrderResumida();
+                                console.log('%c[PERSISTENCE:AGG-DROP] ✓ setAggColumnOrderResumida() called. Current state:', 'background: #4CAF50; color: white; font-weight: bold;', JSON.stringify(savedOrder));
+                            } else {
+                                console.error('%c[PERSISTENCE:AGG-DROP] ✗ UNKNOWN TABLE ID:', 'background: #f44336; color: white; font-weight: bold;', sourceTable.id);
+                            }
+
+                            // CRITICAL: Call saveSettings
+                            console.log('%c[PERSISTENCE:AGG-DROP] About to call saveSettings(immediate=true)...', 'background: #ff0000; color: white; font-weight: bold; font-size: 14px;');
+                            saveSettings(null, null, null, null, null, true);
+                            console.log('%c[PERSISTENCE:AGG-DROP] ✓ saveSettings() called', 'background: #4CAF50; color: white; font-weight: bold;');
+                            console.log('%c[PERSISTENCE:AGG-DROP] ═══ DONE ═══', 'background: #4CAF50; color: white; font-weight: bold; font-size: 12px;');
+                        } else {
+                            console.warn('[DRAG-DROP] Invalid header indices - draggedIdx:', draggedIdx, 'targetIdx:', targetIdx);
                         }
+                    } else {
+                        console.warn('[DRAG-DROP] thead not found!');
                     }
                 }
             }
@@ -1291,11 +1483,24 @@ export function setupColumnDragAndDrop() {
         });
     });
 
-    // Mark as initialized
+    // Mark as initialized using both JS flag AND DOM marker
+    dragAndDropInitialized = true;
+    console.log('%c[DRAG-DROP:INIT] ✓ JS flag set to true', 'background: #4CAF50; color: white; font-weight: bold;');
+    
+    // Keep DOM marker for backwards compatibility and debugging
     const marker = document.createElement('div');
     marker.className = 'dragging-initialized';
     marker.style.display = 'none';
     document.body.appendChild(marker);
+    console.log('%c[DRAG-DROP:INIT] ✓ DOM marker created', 'background: #4CAF50; color: white; font-weight: bold;');
+}
+
+// Reset function for debugging or when needed
+export function resetDragAndDropInitialization() {
+    dragAndDropInitialized = false;
+    const marker = document.querySelector('.dragging-initialized');
+    if (marker) marker.remove();
+    console.log('%c[DRAG-DROP:INIT] Drag-and-drop initialization reset', 'background: #FF5722; color: white; font-weight: bold;');
 }
 
 export function applyColumnVisibility() {
@@ -1326,10 +1531,16 @@ export function applyColumnVisibility() {
 }
 
 export function applyColumnWidths() {
+    console.log('[applyColumnWidths] ════════════════════════════════════════');
+    console.log('[applyColumnWidths] CALLED at', new Date().toLocaleTimeString());
+    console.trace('[applyColumnWidths] Stack trace:');
+
     const columnWidths = getColumnWidths() || {};
-    //console.log('[DEBUG] applyColumnWidths called, columnWidths from state:', JSON.stringify(columnWidths));
+    console.log('[applyColumnWidths] columnWidths from state:', JSON.stringify(columnWidths));
 
     // Apply widths for positions table from storage or defaults from COLUMN_DEFS
+    console.log('[applyColumnWidths] Applying widths to positions table...');
+    let appliedCount = 0;
     COLUMN_DEFS.forEach(colDef => {
         const thId = `th-${colDef.key.replace('col-', '')}`;
         const th = document.getElementById(thId);
@@ -1338,9 +1549,11 @@ export function applyColumnWidths() {
             // Priority: Stored width (new key format) > Stored width (old key format) > Default width > 100
             const storageKey = `positions_${colDef.key.replace('col-', '')}`;
             const oldStorageKey = thId;
-            let width = columnWidths[storageKey] || columnWidths[oldStorageKey] || colDef.width || 100;
-            
-            //console.log(`[DEBUG] Column ${colDef.key}: storageKey=${storageKey}, oldStorageKey=${oldStorageKey}, storedValue=${columnWidths[storageKey] || 'undefined'}, usedWidth=${width}`);
+            const storedWidth = columnWidths[storageKey];
+            const oldStoredWidth = columnWidths[oldStorageKey];
+            let width = storedWidth || oldStoredWidth || colDef.width || 100;
+
+            console.log(`[applyColumnWidths] Column ${colDef.key}: storageKey=${storageKey}, stored=${storedWidth || 'none'}, oldStored=${oldStoredWidth || 'none'}, default=${colDef.width}, FINAL=${width}`);
 
             // Enforce minimum width
             if (width < 40) width = 40; // Allow smaller columns like # (width 40 in config)
@@ -1348,8 +1561,12 @@ export function applyColumnWidths() {
             th.style.width = `${width}px`;
             th.style.minWidth = `${width}px`;
             th.style.maxWidth = `${width}px`;
+            appliedCount++;
+        } else {
+            console.log(`[applyColumnWidths] Column ${colDef.key}: th element NOT FOUND (${thId})`);
         }
     });
+    console.log(`[applyColumnWidths] Applied widths to ${appliedCount} columns`);
 
     // Apply widths for aggregation tables (liquidationTableFull and liquidationTableSummary)
     const aggTables = ['liquidationTableFull', 'liquidationTableSummary'];
@@ -1374,4 +1591,7 @@ export function applyColumnWidths() {
             th.style.maxWidth = `${width}px`;
         });
     });
+
+    console.log('[applyColumnWidths] ✓ DONE');
+    console.log('[applyColumnWidths] ════════════════════════════════════════');
 }
