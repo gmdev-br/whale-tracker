@@ -129,11 +129,11 @@ function renderAggregationTableBase(options = {}) {
     const state = isResumida ? tableState.resumida : tableState.main;
 
     // Element IDs
-    const sectionId = isResumida ? 'liquidationSectionSummaryWrapper' : 'liquidationSectionFullWrapper';
-    const tableBodyId = isResumida ? 'liquidationTableSummaryBody' : 'liquidationTableFullBody';
-    const statsBarId = isResumida ? 'liquidationStatsBarSummary' : 'liquidationStatsBarFull';
-    const minPriceInputId = isResumida ? 'liquidationMinPriceSummary' : 'liquidationMinPriceFull';
-    const maxPriceInputId = isResumida ? 'liquidationMaxPriceSummary' : 'liquidationMaxPriceFull';
+    const sectionId = isResumida ? 'aggResumidaSectionWrapper' : 'liquidationSectionFullWrapper';
+    const tableBodyId = isResumida ? 'aggResumidaTableBody' : 'liquidationTableFullBody';
+    const statsBarId = isResumida ? 'aggResumidaStatsBar' : 'liquidationStatsBarFull';
+    const minPriceInputId = isResumida ? 'aggResumidaMinPrice' : 'liquidationMinPriceFull';
+    const maxPriceInputId = isResumida ? 'aggResumidaMaxPrice' : 'liquidationMaxPriceFull';
 
     const aggSection = document.getElementById(sectionId);
     const isCollapsed = aggSection?.classList.contains('collapsed');
@@ -245,7 +245,7 @@ function renderAggregationTableBase(options = {}) {
     // Reorder headers if there's a saved column order
     const savedHeaderOrder = isResumida ? getAggColumnOrderResumida() : getAggColumnOrder();
     if (savedHeaderOrder && savedHeaderOrder.length > 0) {
-        const tableEl = document.getElementById(isResumida ? 'liquidationTableSummary' : 'liquidationTableFull');
+        const tableEl = document.getElementById(isResumida ? 'aggResumidaTable' : 'liquidationTableFull');
         if (tableEl) {
             const theadRow = tableEl.querySelector('thead tr');
             if (theadRow) {
@@ -373,7 +373,7 @@ function initializeControls(isResumida, state, minPriceInputId, maxPriceInputId,
 
     // Volume Unit Toggle Buttons (for Resumida table)
     if (isResumida) {
-        const volumeUnitButtons = document.querySelectorAll(`#liquidationSectionSummaryWrapper .js-agg-volume-unit-tab`);
+        const volumeUnitButtons = document.querySelectorAll(`#aggResumidaSectionWrapper .js-agg-volume-unit-tab`);
         if (volumeUnitButtons) {
             volumeUnitButtons.forEach(btn => {
                 btn.addEventListener('click', () => {

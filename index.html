@@ -775,30 +775,29 @@
     </div>
 
     <!-- Collapsible Aggregation Section - Resumida -->
-    <div class="section-wrapper" id="liquidationSectionSummaryWrapper">
-        <div class="section-header js-collapse-toggle" data-target="liquidationSectionSummaryContent">
+    <div class="section-wrapper" id="aggResumidaSectionWrapper">
+        <div class="section-header js-collapse-toggle" data-target="aggResumidaSectionContent">
             <h2 class="section-title">2. CRIPTOS - RESUMIDA</h2>
             <svg class="chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
         </div>
-        <div class="section-content" id="liquidationSectionSummaryContent" style="position:relative;">
+        <div class="section-content" id="aggResumidaSectionContent" style="position:relative;">
             <div class="agg-stats-bar"
                 style="display:flex; gap:12px; padding:8px 16px; background:var(--panel-bg); border-bottom:1px solid var(--border-color); font-size:12px; flex-wrap:wrap; align-items:center; justify-content: space-between;">
-                <div id="liquidationStatsBarSummary"
-                    style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+                <div id="aggResumidaStatsBar" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
                     <!-- Filled by JS -->
                 </div>
                 <div style="display:flex; gap:8px; align-items:center;">
                     <div
                         style="display:flex; gap:4px; align-items:center; background:rgba(255,255,255,0.05); padding:4px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.1)">
                         <label style="font-size:10px; color:var(--text-muted)">Range:</label>
-                        <input type="number" id="liquidationMinPriceSummary" placeholder="Piso"
+                        <input type="number" id="aggResumidaMinPrice" placeholder="Piso"
                             style="width:70px; height:24px; font-size:11px; background:rgba(0,0,0,0.2); border:1px solid var(--border-color); color:var(--text); padding:0 4px; border-radius:4px"
                             title="Preço mínimo (Piso) para a tabela de agregação">
                         <span style="color:var(--text-muted)">-</span>
-                        <input type="number" id="liquidationMaxPriceSummary" placeholder="Teto"
+                        <input type="number" id="aggResumidaMaxPrice" placeholder="Teto"
                             style="width:70px; height:24px; font-size:11px; background:rgba(0,0,0,0.2); border:1px solid var(--border-color); color:var(--text); padding:0 4px; border-radius:4px"
                             title="Preço máximo (Teto) para a tabela de agregação">
                     </div>
@@ -811,10 +810,9 @@
                     </div>
                 </div>
             </div>
-            <div id="liquidationTableSummarySection">
+            <div id="aggResumidaTableSection">
                 <div class="table-wrap agg-table-wrap" style="max-height: 450px; overflow-y: scroll;">
-                    <table class="liquidation-table" id="liquidationTableSummary"
-                        style="table-layout: fixed; width: 100%;">
+                    <table class="liquidation-table" id="aggResumidaTable" style="table-layout: fixed; width: 100%;">
                         <thead>
                             <tr>
                                 <th id="th-agg-faixaDe" class="col-agg-range">Faixa<br>De ($)<div class="resizer"></div>
@@ -864,7 +862,7 @@
                                 </th>
                             </tr>
                         </thead>
-                        <tbody id="liquidationTableSummaryBody">
+                        <tbody id="aggResumidaTableBody">
                             <tr>
                                 <td colspan="16" class="empty-cell">Carregando...</td>
                             </tr>
