@@ -1613,15 +1613,15 @@ export function applyColumnVisibility() {
 }
 
 export function applyColumnWidths() {
-    console.log('[applyColumnWidths] ════════════════════════════════════════');
-    console.log('[applyColumnWidths] CALLED at', new Date().toLocaleTimeString());
+    //console.log('[applyColumnWidths] ════════════════════════════════════════');
+    //console.log('[applyColumnWidths] CALLED at', new Date().toLocaleTimeString());
     console.trace('[applyColumnWidths] Stack trace:');
 
     const columnWidths = getColumnWidths() || {};
-    console.log('[applyColumnWidths] columnWidths from state:', JSON.stringify(columnWidths));
+    //console.log('[applyColumnWidths] columnWidths from state:', JSON.stringify(columnWidths));
 
     // Apply widths for positions table from storage or defaults from COLUMN_DEFS
-    console.log('[applyColumnWidths] Applying widths to positions table...');
+    //console.log('[applyColumnWidths] Applying widths to positions table...');
     let appliedCount = 0;
     COLUMN_DEFS.forEach(colDef => {
         const thId = `th-${colDef.key.replace('col-', '')}`;
@@ -1635,7 +1635,7 @@ export function applyColumnWidths() {
             const oldStoredWidth = columnWidths[oldStorageKey];
             let width = storedWidth || oldStoredWidth || colDef.width || 100;
 
-            console.log(`[applyColumnWidths] Column ${colDef.key}: storageKey=${storageKey}, stored=${storedWidth || 'none'}, oldStored=${oldStoredWidth || 'none'}, default=${colDef.width}, FINAL=${width}`);
+            //console.log(`[applyColumnWidths] Column ${colDef.key}: storageKey=${storageKey}, stored=${storedWidth || 'none'}, oldStored=${oldStoredWidth || 'none'}, default=${colDef.width}, FINAL=${width}`);
 
             // Enforce minimum width
             if (width < 40) width = 40; // Allow smaller columns like # (width 40 in config)
@@ -1645,10 +1645,10 @@ export function applyColumnWidths() {
             th.style.maxWidth = `${width}px`;
             appliedCount++;
         } else {
-            console.log(`[applyColumnWidths] Column ${colDef.key}: th element NOT FOUND (${thId})`);
+            //console.log(`[applyColumnWidths] Column ${colDef.key}: th element NOT FOUND (${thId})`);
         }
     });
-    console.log(`[applyColumnWidths] Applied widths to ${appliedCount} columns`);
+    //console.log(`[applyColumnWidths] Applied widths to ${appliedCount} columns`);
 
     // Apply widths for aggregation tables (liquidationTableFull and liquidationTableSummary)
     const aggTables = ['liquidationTableFull', 'liquidationTableSummary'];
@@ -1674,8 +1674,8 @@ export function applyColumnWidths() {
         });
     });
 
-    console.log('[applyColumnWidths] ✓ DONE');
-    console.log('[applyColumnWidths] ════════════════════════════════════════');
+    //console.log('[applyColumnWidths] ✓ DONE');
+    //console.log('[applyColumnWidths] ════════════════════════════════════════');
 }
 
 /**

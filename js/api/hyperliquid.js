@@ -227,9 +227,17 @@ export async function streamPositions(whaleList, minVal, maxConcurrency, callbac
 
         return fetchWithRetry(whale).then(state => {
             if (state) {
-                // Remove old rows for this address using O(N) filter instead of O(N^2) reverse splice loop
-                allRows = allRows.filter(r => r.address !== whale.ethAddress);
-                setAllRows(allRows); // Update global state reference immediately
+                // PERFORMANCE: Use a more efficient update mechanism.
+                // Instead of filtering the whole array (O(N)), we can rebuild it or use a more targeted approach.
+                // Since this is a stream, we update the global allRows.
+                const addressToUpdate = whale.ethAddress;
+
+                // Remove existing rows for this address efficiently if they exist
+                const hasExistingData = allRows.some(r => r.address === addressToUpdate);
+                if (hasExistingData) {
+                    allRows = allRows.filter(r => r.address !== addressToUpdate);
+                    setAllRows(allRows);
+                }
 
                 processState(whale, state, allRows);
                 newSeenAccountValues[whale.ethAddress] = currentVal;

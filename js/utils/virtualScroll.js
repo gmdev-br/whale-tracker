@@ -199,17 +199,18 @@ export class VirtualScroll {
 
                 if (sourceTr) {
                     // Check if update is needed
-                    if (forceUpdate || tr.dataset.sourceIndex !== String(rowIndex)) {
-                        // Copy attributes (class, style, etc.)
-                        tr.className = sourceTr.className;
-                        tr.style.cssText = sourceTr.style.cssText;
+                    // PERFORMANCE: Only update attributes and content if they actually changed
+                    if (tr.className !== sourceTr.className) tr.className = sourceTr.className;
+                    if (tr.style.cssText !== sourceTr.style.cssText) tr.style.cssText = sourceTr.style.cssText;
 
-                        // Copy inner HTML (cells)
-                        tr.innerHTML = sourceTr.innerHTML;
-
-                        // Track index
-                        tr.dataset.sourceIndex = String(rowIndex);
+                    // Use innerHTML update only if changed - simple string compare is often faster than DOM thrashing
+                    const newInnerHtml = sourceTr.innerHTML;
+                    if (tr.innerHTML !== newInnerHtml) {
+                        tr.innerHTML = newInnerHtml;
                     }
+
+                    // Track index
+                    tr.dataset.sourceIndex = String(rowIndex);
                 } else {
                     // Fallback for non-TR strings (e.g. just inner content)
                     if (forceUpdate || tr.dataset.sourceIndex !== String(rowIndex)) {
@@ -287,18 +288,17 @@ export function enableVirtualScroll(tbodyId = 'positionsTableBody', options = {}
                 });
             }
 
-            // Add html property to each row
-            const data = rows.map((row, index) => ({
-                ...row,
-                html: renderer(row, index)
-            }));
+            // PERFORMANCE: Avoid mapping over all rows to pre-calculate HTML.
+            // Wire the custom renderer directly into the VirtualScroll instance so
+            // it calls renderer(rowData, rowIndex) on-demand for only visible rows.
+            virtualScroll.renderRow = renderer;
 
             // Reset tbody to clean up any leftover regular rows
             if (virtualScroll.data.length === 0) {
                 tbody.innerHTML = '';
             }
 
-            virtualScroll.setData(data);
+            virtualScroll.setData(rows);
         } else {
             // Disable virtual scroll for small datasets
             if (virtualScroll) {

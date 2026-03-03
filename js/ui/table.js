@@ -471,8 +471,8 @@ function reorderTableHeadersAndFilters(columnOrder) {
 }
 
 export function updateStats(showSymbols, allRows) {
-    const whaleMeta = getWhaleMeta();
-
+    // FALLBACK: If not using worker or if called manually, calculate stats
+    // This maintains backward compatibility but should be avoided in the hot path.
     const whalesWithPos = new Set();
     const whalesLong = new Set();
     const whalesShort = new Set();
@@ -497,6 +497,7 @@ export function updateStats(showSymbols, allRows) {
         }
     }
 
+    const whaleMeta = getWhaleMeta();
     let totalCap = 0;
     let capLong = 0;
     let capShort = 0;
@@ -511,25 +512,47 @@ export function updateStats(showSymbols, allRows) {
         if (whalesShort.has(addr)) capShort += val;
     });
 
+    applyWorkerStats({
+        whalesWithPos: whalesWithPos.size,
+        whalesLong: whalesLong.size,
+        whalesShort: whalesShort.size,
+        positionsLongCount,
+        positionsShortCount,
+        totalCap,
+        totalUpnl,
+        largest,
+        capLong,
+        capShort,
+        upnlLong,
+        upnlShort
+    }, showSymbols);
+}
+
+/**
+ * Apply pre-calculated stats from worker to UI components
+ */
+function applyWorkerStats(stats, showSymbols) {
     // Update Overall Stats
-    document.getElementById('sWhales').textContent = new Intl.NumberFormat('en-US').format(whalesWithPos.size);
-    document.getElementById('sPositions').textContent = new Intl.NumberFormat('en-US').format(allRows.length);
+    document.getElementById('sWhales').textContent = new Intl.NumberFormat('en-US').format(stats.whalesWithPos);
+    document.getElementById('sPositions').textContent = new Intl.NumberFormat('en-US').format(stats.positionsLongCount + stats.positionsShortCount);
+
     const sym = showSymbols ? '$' : '';
-    document.getElementById('sCapital').textContent = sym + fmt(totalCap);
+    document.getElementById('sCapital').textContent = sym + fmt(stats.totalCap);
+
     const upnlEl = document.getElementById('sUpnl');
-    upnlEl.textContent = fmtUSD(totalUpnl);
-    upnlEl.className = 'stat-value ' + (totalUpnl >= 0 ? 'green' : 'red');
-    document.getElementById('sLargest').textContent = sym + fmt(largest);
+    upnlEl.textContent = fmtUSD(stats.totalUpnl);
+    upnlEl.className = 'stat-value ' + (stats.totalUpnl >= 0 ? 'green' : 'red');
+    document.getElementById('sLargest').textContent = sym + fmt(stats.largest);
 
     // Update Long/Short Breakdowns
-    document.getElementById('sWhalesLong').textContent = `L: ${whalesLong.size}`;
-    document.getElementById('sWhalesShort').textContent = `S: ${whalesShort.size}`;
-    document.getElementById('sPositionsLong').textContent = `L: ${positionsLongCount}`;
-    document.getElementById('sPositionsShort').textContent = `S: ${positionsShortCount}`;
-    document.getElementById('sCapitalLong').textContent = `L: ${sym}${fmt(capLong)}`;
-    document.getElementById('sCapitalShort').textContent = `S: ${sym}${fmt(capShort)}`;
-    document.getElementById('sUpnlLong').textContent = `L: ${fmtUSD(upnlLong)}`;
-    document.getElementById('sUpnlShort').textContent = `S: ${fmtUSD(upnlShort)}`;
+    document.getElementById('sWhalesLong').textContent = `L: ${stats.whalesLong}`;
+    document.getElementById('sWhalesShort').textContent = `S: ${stats.whalesShort}`;
+    document.getElementById('sPositionsLong').textContent = `L: ${stats.positionsLongCount}`;
+    document.getElementById('sPositionsShort').textContent = `S: ${stats.positionsShortCount}`;
+    document.getElementById('sCapitalLong').textContent = `L: ${sym}${fmt(stats.capLong)}`;
+    document.getElementById('sCapitalShort').textContent = `S: ${sym}${fmt(stats.capShort)}`;
+    document.getElementById('sUpnlLong').textContent = `L: ${fmtUSD(stats.upnlLong)}`;
+    document.getElementById('sUpnlShort').textContent = `S: ${fmtUSD(stats.upnlShort)}`;
 }
 
 // Track last render caller for diagnostics
@@ -602,28 +625,8 @@ function _renderTableInternal() {
     // Create cache key for filter state
     // NOTE: allRows.length is included so the cache is invalidated when data loads after an
     // initial empty render (e.g., loadSettings triggering renderTable before loadTableData).
-    const cacheKey = JSON.stringify({
-        dataLen: allRows.length,
-        selectedCoins,
-        addressFilter,
-        sideFilter,
-        minLev,
-        maxLev,
-        minSize,
-        minFunding,
-        levTypeFilter,
-        minSzi,
-        maxSzi,
-        minValueCcy,
-        maxValueCcy,
-        minEntryCcy,
-        maxEntryCcy,
-        activeCurrency,
-        activeEntryCurrency,
-        priceVersion: getPriceUpdateVersion(), // Invalidate cache when prices update
-        sortKey: getSortKey(),
-        sortDir: getSortDir()
-    });
+    // PERFORMANCE: Optimized cache key generation (avoid full JSON.stringify for large objects)
+    const cacheKey = `${allRows.length}|${selectedCoins.join(',')}|${addressFilter}|${sideFilter}|${minLev}|${maxLev}|${minSize}|${minFunding}|${levTypeFilter}|${minSzi}|${maxSzi}|${minValueCcy}|${maxValueCcy}|${minEntryCcy}|${maxEntryCcy}|${activeCurrency}|${activeEntryCurrency}|${getPriceUpdateVersion()}|${sortKey}|${sortDir}`;
 
     // Check cache first
     let rows;
@@ -635,9 +638,16 @@ function _renderTableInternal() {
         if (dataWorker) {
             // Use Web Worker for heavy lifting
             dataWorker.onmessage = function (e) {
-                const processedRows = e.data.rows;
-                console.log(`[Table] Worker returned ${processedRows.length} rows.`);
+                const { rows: processedRows, stats } = e.data;
+                console.log(`[Table] Worker returned ${processedRows.length} rows and stats.`);
+
                 filterCache.set(cacheKey, processedRows);
+
+                // PERFORMANCE: Update stats immediately from worker data
+                if (stats) {
+                    applyWorkerStats(stats, showSymbols);
+                }
+
                 finalizeTableRender(processedRows, showSymbols);
             };
 
@@ -794,11 +804,13 @@ function _renderTableInternal() {
             });
         }
 
-        // Update statistics with filtered rows
-        try {
-            updateStats(showSymbols, rows);
-        } catch (err) {
-            console.error('updateStats error (non-fatal):', err);
+        // Update statistics with filtered rows (ONLY if not using worker - worker handles its own stats)
+        if (!dataWorker) {
+            try {
+                updateStats(showSymbols, rows);
+            } catch (err) {
+                console.error('updateStats error (non-fatal):', err);
+            }
         }
 
         const tbody = document.getElementById('positionsTableBody');
@@ -851,16 +863,16 @@ function _renderTableInternal() {
             const isHighLev = Math.abs(r.leverageValue) >= highLevSplit;
             const levClass = `${side}-${isHighLev ? 'high' : 'low'}`;
 
-            // Liquidation Price (Correlated)
-            const liqPrice = r.liquidationPx > 0 ? getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates) : 0;
+            // PERFORMANCE: Use pre-calculated worker values instead of calling currency utilities thousands of times
+            const liqPrice = r._liqPxCcy || 0;
             let liqPriceFormatted = '—';
-            if (r.liquidationPx > 0) {
+            if (liqPrice > 0) {
                 const entMeta = CURRENCY_META[activeEntryCurrency] || CURRENCY_META.USD;
                 const sym = showSymbols ? entMeta.symbol : '';
                 liqPriceFormatted = sym + liqPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
 
-            // Distance to liq
+            // Distance to liq (distPct is already calculated in worker)
             let distHtml = '<span class="muted">—</span>';
             if (r.distPct !== null) {
                 const pct = r.distPct;
@@ -881,14 +893,14 @@ function _renderTableInternal() {
             const absSzi = Math.abs(r.szi);
             const sziStr = absSzi.toFixed(decimalPlaces);
 
-            const ccyVal = convertToActiveCcy(r.positionValue, null, activeCurrency, fxRates);
-            const ccyStr = fmtCcy(ccyVal, null, activeCurrency, showSymbols);
+            // PERFORMANCE: Use pre-calculated _valCcy from worker
+            const ccyStr = fmtCcy(r._valCcy, null, activeCurrency, showSymbols);
 
-            const entVal = getCorrelatedEntry(r, activeEntryCurrency, currentPrices, fxRates);
-            let entStr = '';
+            // PERFORMANCE: Use pre-calculated _entCcy from worker
+            const entVal = r._entCcy || 0;
             const entMeta = CURRENCY_META[activeEntryCurrency] || CURRENCY_META.USD;
             const sym = showSymbols ? entMeta.symbol : '';
-            entStr = sym + entVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const entStr = sym + entVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
             const usdSym = showSymbols ? '$' : '';
 
@@ -898,7 +910,7 @@ function _renderTableInternal() {
             const wrap = (content, extraClass = '') => `<div class="cell-content ${extraClass}">${content}</div>`;
 
             const cells = {
-                'col-num': `<td class="col-num ${autoFitClass}" style="${rowFontStyle}">${wrap(r.index + 1)}</td>`,
+                'col-num': `<td class="col-num ${autoFitClass}" style="${rowFontStyle}">${wrap(i + 1)}</td>`,
                 'col-address': `<td class="col-address ${autoFitClass}" style="${rowFontStyle}">
                 <div class="cell-content">
                     <div class="addr-icon">${meta.displayName ? '⭐' : '🐋'}</div>
@@ -989,9 +1001,9 @@ function _renderTableInternal() {
         renderAggregationTableResumida(true);
 
         // Apply column widths after table is rendered
-        console.log(`% c[PERSISTENCE:RENDER] Calling applyColumnWidths()...`, 'color: #9C27B0;');
+        //console.log(`% c[PERSISTENCE:RENDER] Calling applyColumnWidths()...`, 'color: #9C27B0;');
         applyColumnWidths();
-        console.log(`% c[PERSISTENCE:RENDER]applyColumnWidths() completed`, 'color: #9C27B0;');
+        //console.log(`% c[PERSISTENCE:RENDER]applyColumnWidths() completed`, 'color: #9C27B0;');
 
         // Also apply the default column width (CSS variable)
         const columnWidth = getColumnWidth();

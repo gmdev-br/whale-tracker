@@ -389,45 +389,35 @@ function buildBands(rows, currentPrices, fxRates, activeEntryCurrency, bandSize,
     const bands = {};
     let totalLongNotional = 0;
     let totalShortNotional = 0;
-    let bandsWithPosCount = 0;
 
     // Check if user has set valid price range settings
     const hasUserMinPrice = minPriceSetting > 0;
     const hasUserMaxPrice = maxPriceSetting > 0;
     const hasValidUserRange = hasUserMinPrice && hasUserMaxPrice && minPriceSetting < maxPriceSetting;
 
-    // Determine the range based on user settings OR dynamic calculation
-    let minEntryBand, maxEntryBand;
+    // Determine the range based on user settings OR dynamic calculation using PRE-CALCULATED worker values
+    let minEntryBand = Infinity;
+    let maxEntryBand = -Infinity;
 
     if (hasValidUserRange) {
-        // Use user-defined range
         minEntryBand = minPriceSetting;
         maxEntryBand = maxPriceSetting;
     } else {
-        // Calculate dynamic range if no valid user settings exist
-        minEntryBand = Infinity;
-        maxEntryBand = -Infinity;
+        // PERFORMANCE: Single pass for range detection using pre-calculated values from worker (_entCcy, _liqPxCcy)
+        // Fallback to live calculation for cached/stale rows that may not have pre-computed fields.
+        for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
+            const entryCcy = r._entCcy != null ? r._entCcy : getCorrelatedEntry(r, activeEntryCurrency, currentPrices, fxRates);
 
-        for (const r of rows) {
-            const entryCcy = getCorrelatedEntry(r, activeEntryCurrency, currentPrices, fxRates);
-            // Validate entry price is within reasonable bounds to prevent extreme band calculations
-            if (!isNaN(entryCcy) && entryCcy > 0 && entryCcy <= MAX_REASONABLE_PRICE) {
-                const b = Math.floor(entryCcy / bandSize) * bandSize;
-                if (b < minEntryBand) minEntryBand = b;
-                if (b > maxEntryBand) maxEntryBand = b;
+            if (entryCcy != null && entryCcy > 0 && entryCcy <= MAX_REASONABLE_PRICE) {
+                if (entryCcy < minEntryBand) minEntryBand = entryCcy;
+                if (entryCcy > maxEntryBand) maxEntryBand = entryCcy;
             }
-        }
 
-        // Also consider liquidation prices when no user range is set
-        for (const r of rows) {
-            if (r.liquidationPx > 0) {
-                const liqPriceCorr = getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
-                // Validate liquidation price is within reasonable bounds
-                if (isFinite(liqPriceCorr) && liqPriceCorr > 0 && liqPriceCorr <= MAX_REASONABLE_PRICE) {
-                    const liqB = Math.floor(liqPriceCorr / bandSize) * bandSize;
-                    if (liqB < minEntryBand) minEntryBand = liqB;
-                    if (liqB > maxEntryBand) maxEntryBand = liqB;
-                }
+            const liqPxCcy = r._liqPxCcy != null ? r._liqPxCcy : (r.liquidationPx > 0 ? getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates) : 0);
+            if (liqPxCcy != null && liqPxCcy > 0 && liqPxCcy <= MAX_REASONABLE_PRICE) {
+                if (liqPxCcy < minEntryBand) minEntryBand = liqPxCcy;
+                if (liqPxCcy > maxEntryBand) maxEntryBand = liqPxCcy;
             }
         }
     }
@@ -436,21 +426,14 @@ function buildBands(rows, currentPrices, fxRates, activeEntryCurrency, bandSize,
     if (minEntryBand !== Infinity && minEntryBand !== -Infinity) {
         minEntryBand = Math.floor(minEntryBand / bandSize) * bandSize;
         maxEntryBand = Math.floor(maxEntryBand / bandSize) * bandSize;
-    }
-
-    if (minEntryBand === Infinity || minEntryBand === -Infinity) {
+    } else {
         return { bands: {}, totalLongNotional: 0, totalShortNotional: 0, bandsWithPosCount: 0 };
     }
 
     // Safety Truncate (Anti-Freeze)
     const MAX_ALLOWED_BANDS = 5000;
-    const WARNING_BANDS_THRESHOLD = 500000; // Only warn for truly excessive ranges
     let totalBandsCount = Math.floor((maxEntryBand - minEntryBand) / bandSize) + 1;
     if (totalBandsCount > MAX_ALLOWED_BANDS) {
-        // Only warn for truly excessive ranges, not normal large ranges that truncate fine
-        if (totalBandsCount > WARNING_BANDS_THRESHOLD) {
-            console.warn(`[AggTable] Excessive range detected (${totalBandsCount} bands). Truncating around current price.`);
-        }
         const centerBand = currentBand > 0 ? currentBand : (maxEntryBand + minEntryBand) / 2;
         const halfRange = Math.floor(MAX_ALLOWED_BANDS / 2) * bandSize;
         minEntryBand = Math.max(minEntryBand, Math.floor((centerBand - halfRange) / bandSize) * bandSize);
@@ -460,44 +443,41 @@ function buildBands(rows, currentPrices, fxRates, activeEntryCurrency, bandSize,
     // Pre-populate bands map
     for (let b = minEntryBand; b <= maxEntryBand; b += bandSize) {
         bands[b] = {
-            faixaDe: b,
-            faixaAte: b + bandSize,
-            qtdLong: 0,
-            notionalLong: 0,
-            qtdShort: 0,
-            notionalShort: 0,
-            sumLiqNotionalLong: 0,
-            sumLiqNotionalShort: 0,
-            liqVolLong: 0,
-            liqVolShort: 0,
-            ativosLong: new Set(),
-            ativosShort: new Set(),
-            positionsLong: [],
-            positionsShort: [],
+            faixaDe: b, faixaAte: b + bandSize,
+            qtdLong: 0, notionalLong: 0,
+            qtdShort: 0, notionalShort: 0,
+            sumLiqNotionalLong: 0, sumLiqNotionalShort: 0,
+            liqVolLong: 0, liqVolShort: 0,
+            ativosLong: new Set(), ativosShort: new Set(),
+            positionsLong: [], positionsShort: [],
             isEmpty: true
         };
     }
 
     // Helper to check if price is within user-defined range
     const isInUserRange = (price) => {
-        if (!hasValidUserRange) return true; // No filter applied if no valid user range
+        if (!hasValidUserRange) return true;
         return price >= minPriceSetting && price <= maxPriceSetting;
     };
 
-    // Populate volumes - only include entries within user-defined range
-    for (const r of rows) {
-        const entryCcy = getCorrelatedEntry(r, activeEntryCurrency, currentPrices, fxRates);
-        if (!isNaN(entryCcy) && entryCcy > 0 && isInUserRange(entryCcy)) {
-            const bandDown = Math.floor(entryCcy / bandSize) * bandSize;
-            const b = bands[bandDown];
+    // PERFORMANCE: Optimized single pass for data population using pre-calculated values
+    // Fallback to live calculation for cached/stale rows that may not have pre-computed fields.
+    for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        const entryCcy = r._entCcy != null ? r._entCcy : getCorrelatedEntry(r, activeEntryCurrency, currentPrices, fxRates);
+        const val = r.positionValue;
+        const liqPriceCorr = r._liqPxCcy != null ? r._liqPxCcy : (r.liquidationPx > 0 ? getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates) : 0);
+
+        // Handle entry position mapping
+        if (entryCcy != null && entryCcy > 0 && isInUserRange(entryCcy)) {
+            const bandKey = Math.floor(entryCcy / bandSize) * bandSize;
+            const b = bands[bandKey];
             if (b) {
                 b.isEmpty = false;
-                const val = r.positionValue;
                 if (r.side === 'long') {
                     b.qtdLong++;
                     b.notionalLong += val;
-                    if (r.liquidationPx > 0) {
-                        const liqPriceCorr = getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
+                    if (liqPriceCorr > 0) {
                         b.sumLiqNotionalLong += (liqPriceCorr * val);
                     }
                     b.ativosLong.add(r.coin);
@@ -506,8 +486,7 @@ function buildBands(rows, currentPrices, fxRates, activeEntryCurrency, bandSize,
                 } else {
                     b.qtdShort++;
                     b.notionalShort += val;
-                    if (r.liquidationPx > 0) {
-                        const liqPriceCorr = getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
+                    if (liqPriceCorr > 0) {
                         b.sumLiqNotionalShort += (liqPriceCorr * val);
                     }
                     b.ativosShort.add(r.coin);
@@ -517,22 +496,19 @@ function buildBands(rows, currentPrices, fxRates, activeEntryCurrency, bandSize,
             }
         }
 
-        // Liquidation Volume logic - only include liquidations within user-defined range
-        if (r.liquidationPx > 0) {
-            const liqPriceCorr = getCorrelatedPrice(r, r.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
-            if (isFinite(liqPriceCorr) && liqPriceCorr > 0 && isInUserRange(liqPriceCorr)) {
-                const liqBand = Math.floor(liqPriceCorr / bandSize) * bandSize;
-                const lb = bands[liqBand];
-                if (lb) {
-                    lb.isEmpty = false;  // Marca como não-vazio quando há liquidação
-                    if (r.side === 'long') lb.liqVolLong += r.positionValue;
-                    else lb.liqVolShort += r.positionValue;
-                }
+        // Handle liquidation volume mapping (independent of entry band)
+        if (liqPriceCorr != null && liqPriceCorr > 0 && isInUserRange(liqPriceCorr)) {
+            const liqBandKey = Math.floor(liqPriceCorr / bandSize) * bandSize;
+            const lb = bands[liqBandKey];
+            if (lb) {
+                lb.isEmpty = false;
+                if (r.side === 'long') lb.liqVolLong += val;
+                else lb.liqVolShort += val;
             }
         }
     }
 
-    bandsWithPosCount = Object.values(bands).filter(b => !b.isEmpty).length;
+    const bandsWithPosCount = Object.values(bands).filter(b => !b.isEmpty).length;
 
     return { bands, totalLongNotional, totalShortNotional, bandsWithPosCount };
 }

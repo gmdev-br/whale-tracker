@@ -6,7 +6,7 @@
 function convertToActiveCcy(valueUsd, coin, targetCurrency, fxRates, currentPrices) {
     if (!valueUsd) return 0;
     if (!targetCurrency || targetCurrency === 'USD') return valueUsd;
-    
+
     if (targetCurrency === 'BTC') {
         const btcPrice = parseFloat(currentPrices['BTC'] || 0);
         return btcPrice > 0 ? valueUsd / btcPrice : 0;
@@ -86,79 +86,74 @@ self.onmessage = async function (e) {
     console.log(`[Worker] allRows count: ${allRows?.length || 0}`);
     console.log(`[Worker] selectedCoins:`, selectedCoins);
 
-    // FIX: Validate selectedCoins against actual data coins
-    // If selectedCoins has values but none match the data, ignore the filter
+    // PERFORMANCE: Pre-calculate coinSet once for efficient validation
+    const coinSet = (allRows?.length > 0) ? new Set(allRows.map(r => r.coin)) : new Set();
+
+    // FIX: Validate selectedCoins against actual data rows efficiently
     let effectiveSelectedCoins = selectedCoins;
-    if (allRows?.length > 0 && selectedCoins?.length > 0) {
-        const uniqueCoins = [...new Set(allRows.map(r => r.coin))];
-        const matchingCoins = selectedCoins.filter(sc => uniqueCoins.includes(sc));
+    if (selectedCoins?.length > 0) {
+        const matchingCoins = selectedCoins.filter(sc => coinSet.has(sc));
 
         if (matchingCoins.length === 0) {
             console.warn(`[Worker] selectedCoins has ${selectedCoins.length} coins but none match data. Ignoring coin filter.`);
-            effectiveSelectedCoins = []; // Clear to show all rows
+            effectiveSelectedCoins = [];
         } else if (matchingCoins.length !== selectedCoins.length) {
             console.log(`[Worker] Filtering to ${matchingCoins.length}/${selectedCoins.length} selected coins`);
             effectiveSelectedCoins = matchingCoins;
         }
     }
+    const selectedCoinSet = effectiveSelectedCoins.length > 0 ? new Set(effectiveSelectedCoins) : null;
 
     const { activeCurrency, activeEntryCurrency, currentPrices, fxRates } = currencyState;
-
     const addressFilterRegex = addressFilter ? new RegExp(addressFilter, 'i') : null;
 
-    // DEBUG: Log worker receipt
-    console.log(`[Worker] Received update. Rows: ${allRows.length}, ActiveCurrency: ${activeCurrency}, BTC Price: ${currentPrices['BTC']}`);
+    // PERFORMANCE: Pre-parsed price data
+    const btcPrice = parseFloat(currentPrices['BTC'] || 0);
 
     // PERFORMANCE: Process rows in async chunks to avoid blocking the worker thread
-    // This prevents the worker from becoming unresponsive during large data updates.
-    // Chunks of 1000 items provide a good balance between throughput and responsiveness.
     const CHUNK_SIZE = 1000;
 
     async function processRowsInChunks(rows) {
         const result = [];
         for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
             const chunk = rows.slice(i, i + CHUNK_SIZE);
-            
-            // Process current chunk synchronously
-            const processedChunk = chunk.map(r => {
-                const currentPrice = parseFloat(currentPrices[r.coin]);
-                
-                // If we have a valid current price, update the row's calculated fields
-                if (!isNaN(currentPrice) && currentPrice > 0) {
-                    // Create a shallow copy to avoid mutating the original source array
-                    const newRow = { ...r };
-                    
-                    newRow.markPrice = currentPrice;
-                    
-                    // Update Position Value: size * price
-                    newRow.positionValue = Math.abs(newRow.szi) * currentPrice;
 
-                    // Update Margin Used: positionValue / leverage
+            const processedChunk = chunk.map(r => {
+                const coinPrice = parseFloat(currentPrices[r.coin] || r.markPrice || 0);
+
+                // PERFORMANCE: Update row in-place where possible or use a more efficient update pattern
+                // We still want to return a copy to avoid mutation issues if other parts of the system expect it,
+                // but we optimize the calculations.
+                const newRow = { ...r };
+
+                if (!isNaN(coinPrice) && coinPrice > 0) {
+                    newRow.markPrice = coinPrice;
+                    newRow.positionValue = Math.abs(newRow.szi) * coinPrice;
                     if (newRow.leverageValue > 0) {
                         newRow.marginUsed = newRow.positionValue / newRow.leverageValue;
                     }
-                    
-                    // Update Unrealized PnL: (price - entry) * size
-                    // szi is signed, so this works for both Long and Short
-                    // Long (szi > 0): (P - E) * szi
-                    // Short (szi < 0): (P - E) * (-abs(szi)) = (E - P) * abs(szi)
-                    newRow.unrealizedPnl = (currentPrice - newRow.entryPx) * newRow.szi;
-                    
-                    // Update Distance to Liquidation
+                    newRow.unrealizedPnl = (coinPrice - newRow.entryPx) * newRow.szi;
                     if (newRow.liquidationPx > 0) {
-                        newRow.distPct = Math.abs((currentPrice - newRow.liquidationPx) / currentPrice) * 100;
+                        newRow.distPct = Math.abs((coinPrice - newRow.liquidationPx) / coinPrice) * 100;
                     } else {
                         newRow.distPct = null;
                     }
-                    
-                    return newRow;
+
+                    // PERFORMANCE: Pre-calculate chart-specific fields
+                    newRow._volBTC = btcPrice > 0 ? newRow.positionValue / btcPrice : 0;
+                    newRow._sqrtPosVal = Math.sqrt(newRow.positionValue);
                 }
-                return r;
+
+                // PERFORMANCE: Pre-calculate currency converted values for sorting and filtering
+                // This avoids calling convertToActiveCcy/getCorrelatedEntry thousands of times during sort/filter
+                newRow._valCcy = convertToActiveCcy(newRow.positionValue, null, activeCurrency, fxRates, currentPrices);
+                newRow._entCcy = getCorrelatedEntry(newRow, activeEntryCurrency, currentPrices, fxRates);
+                newRow._liqPxCcy = newRow.liquidationPx > 0 ? getCorrelatedPrice(newRow, newRow.liquidationPx, activeEntryCurrency, currentPrices, fxRates) : 0;
+
+                return newRow;
             });
-            
+
             result.push(...processedChunk);
-            
-            // Yield control back to the event loop if there are more chunks to process
             if (i + CHUNK_SIZE < rows.length) {
                 await new Promise(resolve => setTimeout(resolve, 0));
             }
@@ -166,16 +161,11 @@ self.onmessage = async function (e) {
         return result;
     }
 
-    // Process all rows in chunks
     const updatedRows = await processRowsInChunks(allRows);
 
-    // 1. Filter rows
+    // 1. Filter rows using pre-calculated values
     let rows = updatedRows.filter(r => {
-        if (effectiveSelectedCoins.length > 0 && !effectiveSelectedCoins.includes(r.coin)) {
-            // DEBUG: Log why rows are being filtered out
-            // console.log(`[Worker] Filtering out row with coin: ${r.coin}, not in selectedCoins`);
-            return false;
-        }
+        if (selectedCoinSet && !selectedCoinSet.has(r.coin)) return false;
 
         if (addressFilterRegex) {
             const addr = r.address;
@@ -190,21 +180,14 @@ self.onmessage = async function (e) {
         if (!isNaN(minSize) && r.positionValue < minSize) return false;
         if (!isNaN(minFunding) && Math.abs(r.funding) < minFunding) return false;
         if (levTypeFilter && r.leverageType !== levTypeFilter) return false;
-
         if (!isNaN(minSzi) && Math.abs(r.szi) < minSzi) return false;
         if (!isNaN(maxSzi) && Math.abs(r.szi) > maxSzi) return false;
 
-        if (!isNaN(minValueCcy) || !isNaN(maxValueCcy)) {
-            const valCcy = convertToActiveCcy(r.positionValue, null, activeCurrency, fxRates, currentPrices);
-            if (!isNaN(minValueCcy) && valCcy < minValueCcy) return false;
-            if (!isNaN(maxValueCcy) && valCcy > maxValueCcy) return false;
-        }
+        if (!isNaN(minValueCcy) && r._valCcy < minValueCcy) return false;
+        if (!isNaN(maxValueCcy) && r._valCcy > maxValueCcy) return false;
 
-        if (!isNaN(minEntryCcy) || !isNaN(maxEntryCcy)) {
-            const entCcy = getCorrelatedEntry(r, activeEntryCurrency, currentPrices, fxRates);
-            if (!isNaN(minEntryCcy) && entCcy < minEntryCcy) return false;
-            if (!isNaN(maxEntryCcy) && entCcy > maxEntryCcy) return false;
-        }
+        if (!isNaN(minEntryCcy) && r._entCcy < minEntryCcy) return false;
+        if (!isNaN(maxEntryCcy) && r._entCcy > maxEntryCcy) return false;
 
         if (!isNaN(minUpnl) && r.unrealizedPnl < minUpnl) return false;
         if (!isNaN(maxUpnl) && r.unrealizedPnl > maxUpnl) return false;
@@ -212,33 +195,74 @@ self.onmessage = async function (e) {
         return true;
     });
 
-    // 2. Sort rows
+    // 2. Sort rows using pre-calculated values
     const { sortKey, sortDir } = sortState;
 
     rows.sort((a, b) => {
         let va, vb;
-
         if (sortKey === 'coin') {
             return sortDir * a.coin.localeCompare(b.coin);
-        } else if (sortKey === 'funding') {
-            va = a.funding; vb = b.funding;
         } else if (sortKey === 'valueCcy') {
-            va = convertToActiveCcy(a.positionValue, null, activeCurrency, fxRates, currentPrices);
-            vb = convertToActiveCcy(b.positionValue, null, activeCurrency, fxRates, currentPrices);
+            va = a._valCcy; vb = b._valCcy;
         } else if (sortKey === 'entryCcy') {
-            va = getCorrelatedEntry(a, activeEntryCurrency, currentPrices, fxRates);
-            vb = getCorrelatedEntry(b, activeEntryCurrency, currentPrices, fxRates);
+            va = a._entCcy; vb = b._entCcy;
         } else if (sortKey === 'liqPx') {
-            va = a.liquidationPx > 0 ? getCorrelatedPrice(a, a.liquidationPx, activeEntryCurrency, currentPrices, fxRates) : 0;
-            vb = b.liquidationPx > 0 ? getCorrelatedPrice(b, b.liquidationPx, activeEntryCurrency, currentPrices, fxRates) : 0;
+            va = a._liqPxCcy; vb = b._liqPxCcy;
         } else {
             va = a[sortKey] ?? 0;
             vb = b[sortKey] ?? 0;
         }
-
         return sortDir * (vb - va);
     });
 
-    // Send back the processed rows
-    self.postMessage({ rows });
+    // 3. Calculate global statistics in a single pass to save main thread time
+    const stats = {
+        whalesWithPos: 0,
+        whalesLong: 0,
+        whalesShort: 0,
+        positionsLongCount: 0,
+        positionsShortCount: 0,
+        totalUpnl: 0,
+        upnlLong: 0,
+        upnlShort: 0,
+        totalCap: 0,
+        capLong: 0,
+        capShort: 0,
+        largest: 0
+    };
+
+    const whalesWithPosSet = new Set();
+    const whalesLongSet = new Set();
+    const whalesShortSet = new Set();
+
+    for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        whalesWithPosSet.add(r.address);
+        stats.totalUpnl += r.unrealizedPnl;
+
+        if (r.side === 'long') {
+            whalesLongSet.add(r.address);
+            stats.upnlLong += r.unrealizedPnl;
+            stats.positionsLongCount++;
+        } else if (r.side === 'short') {
+            whalesShortSet.add(r.address);
+            stats.upnlShort += r.unrealizedPnl;
+            stats.positionsShortCount++;
+        }
+    }
+
+    stats.whalesWithPos = whalesWithPosSet.size;
+    stats.whalesLong = whalesLongSet.size;
+    stats.whalesShort = whalesShortSet.size;
+
+    whalesWithPosSet.forEach(addr => {
+        const meta = whaleMeta[addr];
+        const val = meta?.accountValue || 0;
+        stats.totalCap += val;
+        if (val > stats.largest) stats.largest = val;
+        if (whalesLongSet.has(addr)) stats.capLong += val;
+        if (whalesShortSet.has(addr)) stats.capShort += val;
+    });
+
+    self.postMessage({ rows, stats });
 };
