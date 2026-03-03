@@ -2,23 +2,28 @@
    LIQUID GLASS — Badges
    ═══════════════════════════════════════════════════════════ */
 
-/* ── Status Badge ── */
+/* ── Status Badge — Liquid Glass ── */
 .status-badge {
     display: flex;
     align-items: center;
     gap: 7px;
-    background: var(--glass-bg);
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.05) 0%,
+        rgba(255, 255, 255, 0.02) 100%
+    );
     border: 1px solid var(--glass-border);
     border-radius: var(--r-pill);
     padding: 5px 14px;
     font-size: 11px;
-    color: var(--muted);
+    color: var(--text-secondary);
     backdrop-filter: var(--glass-blur-sm);
     -webkit-backdrop-filter: var(--glass-blur-sm);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
     will-change: transform, box-shadow;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
 }
 
 /* Mobile status badge */

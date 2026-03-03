@@ -14,7 +14,11 @@
 }
 
 .toast {
-    background: linear-gradient(135deg, rgba(16, 24, 40, 0.95), rgba(8, 12, 20, 0.95));
+    background: linear-gradient(
+        135deg, 
+        rgba(25, 30, 50, 0.9) 0%,
+        rgba(15, 20, 35, 0.85) 100%
+    );
     border: 1px solid var(--glass-border);
     border-left: 3px solid var(--color-success);
     border-radius: var(--r-md);
@@ -24,7 +28,10 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+        0 0 20px rgba(139, 158, 255, 0.1);
     backdrop-filter: var(--glass-blur-heavy);
     -webkit-backdrop-filter: var(--glass-blur-heavy);
     transform: translateX(120%) scale(0.9);

@@ -2,24 +2,31 @@
    LIQUID GLASS — Chart Section
    ═══════════════════════════════════════════════════════════ */
 
-/* ── Chart Section ── */
+/* ── Chart Section — Liquid Glass ── */
 #chart-section,
 #liq-chart-section {
     position: relative;
     padding: 20px;
-    background: linear-gradient(180deg, rgba(7, 12, 26, 0.40) 0%, rgba(7, 12, 26, 0.25) 100%);
+    background: linear-gradient(
+        180deg, 
+        rgba(25, 25, 40, 0.5) 0%, 
+        rgba(18, 18, 30, 0.35) 100%
+    );
     border-bottom: 1px solid var(--glass-border);
     display: none;
     min-height: 200px;
     max-height: 400px;
     overflow: hidden;
     z-index: 50;
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
     will-change: transform, opacity;
+    box-shadow: 
+        0 4px 24px rgba(0, 0, 0, 0.3),
+        0 1px 0 rgba(255, 255, 255, 0.03) inset;
 }
 
 /* Add subtle grid background for data points */
@@ -44,8 +51,15 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent 0%, var(--glass-highlight) 50%, transparent 100%);
-    opacity: 0.4;
+    background: linear-gradient(
+        90deg, 
+        transparent 0%, 
+        rgba(139, 158, 255, 0.3) 20%,
+        rgba(255, 255, 255, 0.2) 50%,
+        rgba(139, 158, 255, 0.3) 80%,
+        transparent 100%
+    );
+    opacity: 0.6;
 }
 
 /* Mobile chart section */
@@ -122,25 +136,45 @@
 }
 
 .chart-resizer:active {
-    background: rgba(156, 163, 175, 0.15);
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(139, 158, 255, 0.2) 100%
+    );
 }
 
 .chart-resizer:hover,
 .chart-resizer.active {
-    background: rgba(156, 163, 175, 0.10);
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(139, 158, 255, 0.15) 100%
+    );
     cursor: ns-resize;
 }
 
 .chart-resizer-handle {
     width: 50px;
     height: 5px;
-    background: rgba(255, 255, 255, 0.3);
+    background: linear-gradient(
+        90deg,
+        rgba(139, 158, 255, 0.4) 0%,
+        rgba(255, 255, 255, 0.5) 50%,
+        rgba(139, 158, 255, 0.4) 100%
+    );
     border-radius: 3px;
-    transition: background 0.2s, transform 0.2s;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 8px rgba(139, 158, 255, 0.3);
 }
 
 .chart-resizer:hover .chart-resizer-handle,
 .chart-resizer.active .chart-resizer-handle {
-    background: rgba(156, 163, 175, 0.8);
-    transform: scaleY(1.2);
+    background: linear-gradient(
+        90deg,
+        rgba(139, 158, 255, 0.7) 0%,
+        rgba(255, 255, 255, 0.8) 50%,
+        rgba(139, 158, 255, 0.7) 100%
+    );
+    transform: scaleY(1.3);
+    box-shadow: 0 0 12px rgba(139, 158, 255, 0.5);
 }

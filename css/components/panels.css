@@ -2,14 +2,18 @@
    LIQUID GLASS — Panels
    ═══════════════════════════════════════════════════════════ */
 
-/* ── Ranking Panel ── */
+/* ── Ranking Panel — Liquid Glass ── */
 #ranking-panel {
     display: flex;
     gap: 10px;
     padding: 10px 24px;
     padding-bottom: calc(10px + var(--safe-bottom));
     overflow-x: auto;
-    background: linear-gradient(180deg, rgba(10, 15, 30, 0.55) 0%, rgba(10, 15, 30, 0.40) 100%);
+    background: linear-gradient(
+        180deg, 
+        rgba(18, 18, 30, 0.5) 0%, 
+        rgba(18, 18, 30, 0.35) 100%
+    );
     border-bottom: 1px solid var(--glass-border);
     position: relative;
     z-index: 75;
@@ -18,6 +22,8 @@
     flex-wrap: nowrap;
     align-items: center;
     -webkit-overflow-scrolling: touch;
+    backdrop-filter: var(--glass-blur-sm);
+    -webkit-backdrop-filter: var(--glass-blur-sm);
 }
 
 #ranking-panel::before {
@@ -27,8 +33,15 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent 0%, var(--glass-highlight) 50%, transparent 100%);
-    opacity: 0.4;
+    background: linear-gradient(
+        90deg, 
+        transparent 0%, 
+        rgba(139, 158, 255, 0.2) 20%,
+        rgba(255, 255, 255, 0.15) 50%,
+        rgba(139, 158, 255, 0.2) 80%,
+        transparent 100%
+    );
+    opacity: 0.6;
 }
 
 /* Mobile ranking panel */
@@ -54,7 +67,11 @@
 
 .ranking-card {
     flex-shrink: 0;
-    background: var(--glass-bg);
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.06) 0%,
+        rgba(255, 255, 255, 0.03) 100%
+    );
     border: 1px solid var(--glass-border);
     border-radius: var(--r-md);
     padding: 8px 14px;
@@ -71,12 +88,21 @@
     -webkit-tap-highlight-color: transparent;
     overflow: hidden;
     will-change: transform, box-shadow;
+    box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.2),
+        0 1px 0 rgba(255, 255, 255, 0.05) inset;
 }
 
 .ranking-card.primary {
-    background: linear-gradient(135deg, rgba(156, 163, 175, 0.15) 0%, rgba(156, 163, 175, 0.10) 100%);
-    border-color: var(--glass-border-hi);
-    box-shadow: 0 4px 16px rgba(156, 163, 175, 0.15);
+    background: linear-gradient(
+        135deg, 
+        rgba(139, 158, 255, 0.2) 0%, 
+        rgba(107, 124, 224, 0.12) 100%
+    );
+    border-color: rgba(139, 158, 255, 0.3);
+    box-shadow: 
+        0 4px 16px rgba(139, 158, 255, 0.2),
+        0 0 0 1px rgba(139, 158, 255, 0.1) inset;
 }
 
 .ranking-card.secondary {
@@ -100,7 +126,12 @@
     left: -100%;
     width: 100%;
     height: 100%;
-    background: var(--glass-shimmer);
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(139, 158, 255, 0.1) 50%,
+        transparent 100%
+    );
     transition: left 0.6s ease;
     pointer-events: none;
 }
@@ -109,20 +140,61 @@
     left: 100%;
 }
 
+/* Glass shine sweep effect on hover */
+.ranking-card::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        105deg,
+        transparent 40%,
+        rgba(255, 255, 255, 0.05) 45%,
+        rgba(255, 255, 255, 0.15) 50%,
+        rgba(255, 255, 255, 0.05) 55%,
+        transparent 60%
+    );
+    transform: translateX(-100%) rotate(25deg);
+    pointer-events: none;
+    opacity: 0;
+}
+
+.ranking-card:hover::after {
+    animation: glassShine 0.8s ease forwards;
+    opacity: 1;
+}
+
 .ranking-card:active {
     transform: scale(0.97);
 }
 
 .ranking-card:hover {
-    background: var(--glass-bg-strong);
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0.06) 100%
+    );
     transform: translateY(-2px);
-    border-color: var(--glass-border-hi);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    border-color: rgba(139, 158, 255, 0.25);
+    box-shadow: 
+        0 8px 24px rgba(0, 0, 0, 0.3),
+        0 0 20px rgba(139, 158, 255, 0.15),
+        0 1px 0 rgba(255, 255, 255, 0.08) inset;
 }
 
 .ranking-card.primary:hover {
-    background: linear-gradient(135deg, rgba(156, 163, 175, 0.25) 0%, rgba(156, 163, 175, 0.20) 100%);
-    box-shadow: 0 8px 24px rgba(156, 163, 175, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+    background: linear-gradient(
+        135deg, 
+        rgba(139, 158, 255, 0.3) 0%, 
+        rgba(107, 124, 224, 0.2) 100%
+    );
+    box-shadow: 
+        0 8px 24px rgba(139, 158, 255, 0.3),
+        0 0 30px rgba(139, 158, 255, 0.2),
+        0 1px 0 rgba(255, 255, 255, 0.1) inset;
+    border-color: rgba(139, 158, 255, 0.4);
 }
 
 .ranking-card:active {

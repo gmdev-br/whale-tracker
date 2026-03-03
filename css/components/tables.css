@@ -47,23 +47,23 @@ th[aria-sort="descending"]::after {
     content: '▼';
 }
 
-/* Enhanced focus for keyboard navigation */
+/* Enhanced focus for keyboard navigation — Liquid Glass */
 table a:focus,
 table button:focus,
 table input:focus {
-    outline: 2px solid rgba(156, 163, 175, 0.5);
+    outline: 2px solid rgba(139, 158, 255, 0.5);
     outline-offset: 2px;
     z-index: 10;
 }
 
 /* Row focus for keyboard navigation */
 tr:focus-visible {
-    outline: 2px solid rgba(156, 163, 175, 0.5);
+    outline: 2px solid rgba(139, 158, 255, 0.4);
     outline-offset: -2px;
 }
 
 tr:focus {
-    background: rgba(156, 163, 175, 0.1);
+    background: rgba(139, 158, 255, 0.08);
 }
 
 /* Default column width if not set inline */
@@ -98,17 +98,21 @@ tbody tr {
 }
 
 thead tr {
-    /* Gradient header with depth - no repaint cost */
-    background: linear-gradient(180deg, 
-        rgba(15, 23, 42, 0.98) 0%, 
-        rgba(10, 14, 26, 0.92) 100%);
+    /* Liquid Glass header with enhanced depth */
+    background: linear-gradient(
+        180deg, 
+        rgba(25, 25, 40, 0.85) 0%, 
+        rgba(18, 18, 30, 0.75) 100%
+    );
+    backdrop-filter: var(--glass-blur-sm);
+    -webkit-backdrop-filter: var(--glass-blur-sm);
     position: sticky;
     top: 0;
     z-index: var(--z-glass-elevated);
     border-bottom: 1px solid var(--glass-border);
-    /* Subtle shadow for depth - GPU accelerated */
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    /* GPU acceleration hint */
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        0 1px 0 rgba(255, 255, 255, 0.03) inset;
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
 }
@@ -191,7 +195,7 @@ th:hover .resizer {
 
 .resizer:hover,
 .resizing .resizer {
-    background: rgba(156, 163, 175, 0.4);
+    background: rgba(139, 158, 255, 0.5);
     width: 8px;
 }
 
@@ -202,7 +206,7 @@ th:hover .resizer {
 
 /* Column resizing active state */
 th.resizing-active {
-    background: rgba(96, 165, 250, 0.1);
+    background: rgba(139, 158, 255, 0.12);
     transition: background 0.15s ease;
 }
 
@@ -217,12 +221,12 @@ th[draggable="true"]:active {
 
 th.dragging {
     opacity: 0.5;
-    background: rgba(156, 163, 175, 0.2);
+    background: rgba(139, 158, 255, 0.15);
 }
 
 /* Highlight entire column during drag */
 td.column-dragging {
-    background: rgba(96, 165, 250, 0.15) !important;
+    background: rgba(139, 158, 255, 0.12) !important;
     transition: background-color 0.15s ease;
 }
 
@@ -235,13 +239,23 @@ th.drag-over {
     cursor: col-resize;
 }
 
-/* ── Table Header States ── */
+/* ── Table Header States — Liquid Glass ── */
 th:hover {
-    color: #e2e8f4;
+    color: var(--text);
+    background: linear-gradient(
+        180deg,
+        rgba(139, 158, 255, 0.08) 0%,
+        rgba(139, 158, 255, 0.04) 100%
+    );
 }
 
 th.sorted {
-    color: #cbd5e1;
+    color: var(--accent-light);
+    background: linear-gradient(
+        180deg,
+        rgba(139, 158, 255, 0.1) 0%,
+        rgba(139, 158, 255, 0.05) 100%
+    );
 }
 
 th::after {
@@ -286,41 +300,57 @@ th.sorted .sort-icon {
     color: var(--accent);
 }
 
-/* ── Table Body ── */
+/* ── Table Body — Liquid Glass Rows ── */
 tbody tr {
     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-                transform 0.15s ease;
+    transition: 
+        background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.2s ease;
     position: relative;
-    /* Subtle gradient for depth - GPU only */
-    background: linear-gradient(90deg,
-        rgba(10, 14, 26, 0.6) 0%,
-        rgba(10, 14, 26, 0.4) 100%);
+    background: linear-gradient(
+        90deg,
+        rgba(20, 20, 35, 0.5) 0%,
+        rgba(15, 15, 28, 0.4) 100%
+    );
     will-change: background-color, box-shadow;
-    /* GPU acceleration hint */
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
 }
 
-/* Zebra striping - very subtle */
+/* Zebra striping - subtle glass tint */
 tbody tr:nth-child(even) {
-    background: rgba(255, 255, 255, 0.018);
+    background: linear-gradient(
+        90deg,
+        rgba(139, 158, 255, 0.03) 0%,
+        rgba(139, 158, 255, 0.01) 100%
+    );
 }
 
 tbody tr:active {
-    background: rgba(255, 255, 255, 0.12);
+    background: linear-gradient(
+        90deg,
+        rgba(139, 158, 255, 0.12) 0%,
+        rgba(139, 158, 255, 0.06) 100%
+    );
     transform: scale(1.002);
-    box-shadow: inset 3px 0 0 var(--accent, #9ca3af);
+    box-shadow: 
+        inset 3px 0 0 var(--accent),
+        0 0 30px rgba(139, 158, 255, 0.1);
 }
 
 tbody tr:hover {
-    background: linear-gradient(90deg,
-        rgba(156, 163, 175, 0.12) 0%,
-        rgba(156, 163, 175, 0.08) 100%);
-    /* Left border indicator - no repaint */
-    box-shadow: inset 3px 0 0 var(--accent, #9ca3af),
-                0 0 20px rgba(156, 163, 175, 0.1);
+    background: linear-gradient(
+        90deg,
+        rgba(139, 158, 255, 0.1) 0%,
+        rgba(139, 158, 255, 0.05) 50%,
+        rgba(139, 158, 255, 0.02) 100%
+    );
+    box-shadow: 
+        inset 3px 0 0 var(--accent),
+        0 0 30px rgba(139, 158, 255, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    z-index: 1;
 }
 
 /* ── Table Body Cells ── */

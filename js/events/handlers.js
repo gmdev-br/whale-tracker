@@ -628,26 +628,40 @@ export function updateAggTableHeight(height) {
     }
 }
 
-export function updateAggZoneColors(e) {
+// Debounced versions of color update functions to prevent UI freezing
+const debouncedUpdateAggZoneColors = debounce('aggZoneColors', () => {
     const buyStrong = document.getElementById('colorLiquidationBuyStrong')?.value || '#22c55e';
     const buyNormal = document.getElementById('colorLiquidationBuyNormal')?.value || '#4ade80';
     const sellStrong = document.getElementById('colorLiquidationSellStrong')?.value || '#ef4444';
     const sellNormal = document.getElementById('colorLiquidationSellNormal')?.value || '#f87171';
 
     setLiquidationZoneColors({ buyStrong, buyNormal, sellStrong, sellNormal });
-
     saveSettings();
     // Call directly with force=true to bypass all debounce/optimization caches
     renderAggregationTable(true);
     renderAggregationTableResumida(true);
-}
+}, 150);
 
-export function updateAggHighlightColor(e) {
+const debouncedUpdateAggHighlightColor = debounce('aggHighlightColor', () => {
     const highlightColor = document.getElementById('colorLiquidationHighlight')?.value || '#facc15';
     setLiquidationHighlightColor(highlightColor);
     saveSettings();
     renderAggregationTable(true);
     renderAggregationTableResumida(true);
+}, 150);
+
+export function updateAggZoneColors(e) {
+    // Prevent default to avoid any browser lag
+    if (e) e.preventDefault();
+    // Use debounced version to prevent UI freezing during color drag
+    debouncedUpdateAggZoneColors();
+}
+
+export function updateAggHighlightColor(e) {
+    // Prevent default to avoid any browser lag
+    if (e) e.preventDefault();
+    // Use debounced version to prevent UI freezing during color drag
+    debouncedUpdateAggHighlightColor();
 }
 
 export function updateTooltipDelay(val) {

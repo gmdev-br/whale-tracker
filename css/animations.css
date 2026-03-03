@@ -88,3 +88,87 @@
         opacity: 0;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Liquid Glass — Advanced Effects
+   ═══════════════════════════════════════════════════════════ */
+
+/* Glass shine sweep effect */
+@keyframes glassShine {
+    0% {
+        transform: translateX(-100%) rotate(25deg);
+    }
+    100% {
+        transform: translateX(200%) rotate(25deg);
+    }
+}
+
+/* Ambient glow pulse */
+@keyframes ambientPulse {
+    0%, 100% {
+        opacity: 0.4;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.05);
+    }
+}
+
+/* Liquid wave effect */
+@keyframes liquidWave {
+    0%, 100% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+/* Glass refraction shimmer */
+@keyframes refractionShimmer {
+    0% {
+        background-position: -200% center;
+    }
+    100% {
+        background-position: 200% center;
+    }
+}
+
+/* Smooth float with rotation */
+@keyframes liquidFloat {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    25% {
+        transform: translateY(-5px) rotate(0.5deg);
+    }
+    50% {
+        transform: translateY(-8px) rotate(0deg);
+    }
+    75% {
+        transform: translateY(-5px) rotate(-0.5deg);
+    }
+}
+
+/* Glass border glow */
+@keyframes borderGlow {
+    0%, 100% {
+        border-color: rgba(139, 158, 255, 0.2);
+        box-shadow: 0 0 20px rgba(139, 158, 255, 0.1);
+    }
+    50% {
+        border-color: rgba(139, 158, 255, 0.4);
+        box-shadow: 0 0 30px rgba(139, 158, 255, 0.2);
+    }
+}
+
+/* Depth breathing effect */
+@keyframes depthBreath {
+    0%, 100% {
+        transform: translateZ(0) scale(1);
+    }
+    50% {
+        transform: translateZ(10px) scale(1.002);
+    }
+}

@@ -2,11 +2,15 @@
    LIQUID GLASS — Inputs & Selects
    ═══════════════════════════════════════════════════════════ */
 
-/* ── Inputs & Selects (modernized) ── */
+/* ── Inputs & Selects — Liquid Glass ── */
 input[type="number"],
 input[type="text"],
 select {
-    background: var(--glass-bg);
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.05) 0%,
+        rgba(255, 255, 255, 0.02) 100%
+    );
     border: 1px solid var(--glass-border);
     color: var(--text);
     padding: 6px 10px;
@@ -24,6 +28,7 @@ select {
     min-height: 44px;
     box-sizing: border-box;
     will-change: transform, border-color, box-shadow;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
 }
 
 /* Mobile inputs */
@@ -70,11 +75,18 @@ select:focus,
 input[type="number"]:focus-visible,
 input[type="text"]:focus-visible,
 select:focus-visible {
-    outline: 2px solid rgba(156, 163, 175, 0.8);
+    outline: 2px solid rgba(139, 158, 255, 0.6);
     outline-offset: -2px;
-    border-color: rgba(255, 255, 255, 0.7);
-    box-shadow: 0 0 0 4px rgba(156, 163, 175, 0.2), 0 0 16px rgba(156, 163, 175, 0.25);
-    background-color: var(--glass-bg-strong);
+    border-color: rgba(139, 158, 255, 0.5);
+    box-shadow: 
+        0 0 0 4px rgba(139, 158, 255, 0.15),
+        0 0 20px rgba(139, 158, 255, 0.2),
+        0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    background: linear-gradient(
+        135deg,
+        rgba(139, 158, 255, 0.1) 0%,
+        rgba(139, 158, 255, 0.05) 100%
+    );
 }
 
 /* Hide native number spinners for consistent theme */
@@ -129,23 +141,47 @@ select option {
 
 .combobox-dropdown {
     position: absolute;
-    top: calc(100% + 4px);
+    top: calc(100% + 6px);
     left: 0;
     right: 0;
     min-width: 140px;
-    background: linear-gradient(180deg, rgba(7, 12, 26, 0.98) 0%, rgba(7, 12, 26, 0.95) 100%);
-    border: 1px solid var(--glass-border);
+    background: linear-gradient(
+        180deg, 
+        rgba(30, 30, 50, 0.95) 0%, 
+        rgba(20, 20, 38, 0.92) 100%
+    );
+    border: 1px solid rgba(139, 158, 255, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--r-md);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+    box-shadow: 
+        0 16px 48px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+        0 0 30px rgba(139, 158, 255, 0.1);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     z-index: 200;
     max-height: 220px;
     overflow-y: auto;
     display: none;
-    padding: 4px;
-    animation: dropIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 6px;
+    animation: dropIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: opacity, transform;
+}
+
+.combobox-dropdown::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 30%;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.08) 0%,
+        transparent 100%
+    );
+    pointer-events: none;
+    border-radius: var(--r-md) var(--r-md) 0 0;
 }
 
 .combobox.open .combobox-dropdown {
@@ -197,15 +233,27 @@ select option {
 }
 
 .combobox-item:hover {
-    background: var(--glass-bg-strong);
-    color: #9ca3af;
+    background: linear-gradient(
+        90deg,
+        rgba(139, 158, 255, 0.15) 0%,
+        rgba(139, 158, 255, 0.08) 100%
+    );
+    color: var(--accent-light);
     transform: translateX(2px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .combobox-item.selected {
-    background: linear-gradient(135deg, rgba(156, 163, 175, 0.30) 0%, rgba(156, 163, 175, 0.20) 100%);
+    background: linear-gradient(
+        135deg, 
+        rgba(139, 158, 255, 0.35) 0%, 
+        rgba(107, 124, 224, 0.25) 100%
+    );
     color: #fff;
     border-left: 3px solid var(--accent);
+    box-shadow: 
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 0 15px rgba(139, 158, 255, 0.2);
 }
 
 .item-label {
@@ -454,4 +502,126 @@ input[type="range"]::-moz-range-thumb:hover {
 input[type="range"]::-moz-range-thumb:active {
     transform: scale(1.05);
     box-shadow: 0 0 16px rgba(156, 163, 175, 0.9);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Color Input — Liquid Glass Styling
+   ═══════════════════════════════════════════════════════════ */
+
+input[type="color"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 32px;
+    height: 24px;
+    padding: 0;
+    border: 2px solid rgba(139, 158, 255, 0.3);
+    border-radius: 6px;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0.05) 100%
+    );
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 2px;
+}
+
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 3px;
+}
+
+input[type="color"]::-moz-color-swatch {
+    border: none;
+    border-radius: 3px;
+}
+
+input[type="color"]:hover {
+    border-color: rgba(139, 158, 255, 0.6);
+    box-shadow: 
+        0 0 15px rgba(139, 158, 255, 0.4),
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
+}
+
+input[type="color"]:active {
+    transform: scale(0.95);
+    border-color: rgba(139, 158, 255, 0.8);
+    box-shadow: 
+        0 0 20px rgba(139, 158, 255, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+input[type="color"]:focus {
+    outline: none;
+    border-color: rgba(139, 158, 255, 0.8);
+    box-shadow: 
+        0 0 0 3px rgba(139, 158, 255, 0.2),
+        0 0 20px rgba(139, 158, 255, 0.4);
+}
+
+/* Color picker label wrapper */
+.color-picker-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.05) 0%,
+        rgba(255, 255, 255, 0.02) 100%
+    );
+    border: 1px solid rgba(139, 158, 255, 0.15);
+    border-radius: var(--r-sm);
+    backdrop-filter: var(--glass-blur-sm);
+    -webkit-backdrop-filter: var(--glass-blur-sm);
+    transition: all 0.2s ease;
+}
+
+.color-picker-wrapper:hover {
+    border-color: rgba(139, 158, 255, 0.3);
+    background: linear-gradient(
+        135deg,
+        rgba(139, 158, 255, 0.1) 0%,
+        rgba(139, 158, 255, 0.05) 100%
+    );
+}
+
+/* Color picker group */
+.color-picker-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.04) 0%,
+        rgba(255, 255, 255, 0.02) 100%
+    );
+    border: 1px solid rgba(139, 158, 255, 0.12);
+    border-radius: var(--r-md);
+    backdrop-filter: var(--glass-blur-sm);
+    -webkit-backdrop-filter: var(--glass-blur-sm);
+}
+
+.color-picker-group-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+/* Prevent color picker from causing layout shifts */
+input[type="color"].no-transitions {
+    transition: none;
 }

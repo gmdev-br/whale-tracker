@@ -6,16 +6,21 @@
     position: fixed;
     z-index: 1000;
     padding: 16px;
-    background: rgba(10, 15, 30, 0.75);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    background: linear-gradient(
+        135deg,
+        rgba(25, 25, 45, 0.85) 0%,
+        rgba(15, 15, 30, 0.8) 100%
+    );
+    border: 1px solid rgba(139, 158, 255, 0.15);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 12px;
     box-shadow: 
         0 8px 32px rgba(0, 0, 0, 0.5), 
         0 4px 12px rgba(0, 0, 0, 0.2),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+        0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+        0 0 30px rgba(139, 158, 255, 0.1);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     color: var(--text);
     font-family: 'Inter', sans-serif;
     font-size: 12px;

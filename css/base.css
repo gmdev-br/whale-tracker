@@ -36,9 +36,13 @@
     padding: 0;
 }
 
-/* ── Body & Background ── */
+/* ── Body & Background — Telegram Liquid Glass ── */
 body {
-    background: linear-gradient(135deg, #0a0a0a 0%, #0d0d15 50%, #0a0a0a 100%);
+    background: 
+        radial-gradient(ellipse at 0% 0%, rgba(139, 158, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 100% 100%, rgba(107, 124, 224, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(20, 20, 35, 1) 0%, rgba(10, 10, 15, 1) 100%);
+    background-color: var(--bg-deep);
     color: var(--text);
     font-family: 'Inter', sans-serif;
     font-size: 13px;
@@ -49,32 +53,60 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Animated ambient background orbs with gradients - STATIC for performance */
+/* Liquid Glass ambient background orbs */
 body::before,
 body::after {
     content: '';
     position: fixed;
     border-radius: 50%;
-    filter: blur(140px);
+    filter: blur(120px);
     pointer-events: none;
     z-index: 0;
-    /* animation: orbFloat 20s ease-in-out infinite; */
 }
 
 body::before {
-    width: 800px;
-    height: 800px;
-    top: -250px;
-    left: -250px;
-    background: radial-gradient(ellipse at center, rgba(156, 163, 175, 0.08) 0%, rgba(107, 114, 128, 0.04) 40%, transparent 70%);
+    width: 900px;
+    height: 900px;
+    top: -300px;
+    left: -300px;
+    background: radial-gradient(
+        ellipse at center, 
+        rgba(139, 158, 255, 0.12) 0%, 
+        rgba(107, 124, 224, 0.06) 40%, 
+        transparent 70%
+    );
 }
 
 body::after {
-    width: 700px;
-    height: 700px;
-    bottom: -200px;
-    right: -200px;
-    background: radial-gradient(ellipse at center, rgba(245, 158, 11, 0.06) 0%, rgba(156, 163, 175, 0.03) 40%, transparent 70%);
+    width: 800px;
+    height: 800px;
+    bottom: -250px;
+    right: -250px;
+    background: radial-gradient(
+        ellipse at center, 
+        rgba(255, 167, 38, 0.06) 0%, 
+        rgba(139, 158, 255, 0.04) 40%, 
+        transparent 70%
+    );
+}
+
+/* Additional liquid glass glow element */
+body .ambient-glow {
+    position: fixed;
+    width: 600px;
+    height: 600px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(
+        ellipse at center,
+        rgba(139, 158, 255, 0.03) 0%,
+        transparent 70%
+    );
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
 }
 
 /* Orb floating animation - DISABLED for performance
@@ -127,34 +159,55 @@ body::after {
     position: relative;
 }
 
-/* ── Scrollbar ── */
+/* ── Scrollbar — Liquid Glass ── */
 ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: transparent;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 3px;
-    border: 1px solid rgba(0, 0, 0, 0.3);
-    transition: background 0.2s ease;
+    background: linear-gradient(
+        180deg,
+        rgba(139, 158, 255, 0.3) 0%,
+        rgba(139, 158, 255, 0.2) 100%
+    );
+    border-radius: 4px;
+    border: 1px solid rgba(139, 158, 255, 0.15);
+    transition: all 0.2s ease;
+    backdrop-filter: blur(4px);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
+    background: linear-gradient(
+        180deg,
+        rgba(139, 158, 255, 0.5) 0%,
+        rgba(139, 158, 255, 0.35) 100%
+    );
+    box-shadow: 0 0 10px rgba(139, 158, 255, 0.3);
 }
 
 ::-webkit-scrollbar-thumb:active {
-    background: rgba(255, 255, 255, 0.35);
+    background: linear-gradient(
+        180deg,
+        rgba(139, 158, 255, 0.6) 0%,
+        rgba(139, 158, 255, 0.45) 100%
+    );
 }
 
 /* iOS scrollbar styling */
 ::-webkit-scrollbar {
     -webkit-appearance: none;
+}
+
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 158, 255, 0.3) rgba(0, 0, 0, 0.2);
 }
 
 /* ── Focus Styles ── */
@@ -164,9 +217,19 @@ body::after {
     border-radius: 2px;
 }
 
-/* ── Selection ── */
+/* ── Selection — Liquid Glass ── */
 ::selection {
-    background: rgba(156, 163, 175, 0.3);
+    background: linear-gradient(
+        180deg,
+        rgba(139, 158, 255, 0.4) 0%,
+        rgba(107, 124, 224, 0.35) 100%
+    );
+    color: #fff;
+    text-shadow: 0 0 8px rgba(139, 158, 255, 0.5);
+}
+
+::-moz-selection {
+    background: rgba(139, 158, 255, 0.4);
     color: #fff;
 }
 

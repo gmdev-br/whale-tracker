@@ -163,30 +163,6 @@ function setupPullToRefresh() {
     eventManager.on(document, 'touchend', handleTouchEnd);
 }
 
-// ── Splash Screen ──
-function setupSplashScreen() {
-    const splashScreen = getElement('splashScreen');
-    if (!splashScreen) return;
-
-    // Hide splash screen - handle both cases: already loaded or still loading
-    function hideSplashScreen() {
-        setTimeout(() => {
-            splashScreen.classList.add('hidden');
-            setTimeout(() => {
-                splashScreen.style.display = 'none';
-            }, 300);
-        }, 1000);
-    }
-
-    // Check if page is already loaded
-    if (document.readyState === 'complete') {
-        hideSplashScreen();
-    } else {
-        // Page still loading, wait for load event
-        eventManager.on(window, 'load', hideSplashScreen);
-    }
-}
-
 function setupEventListeners() {
     console.log('setupEventListeners called');
     // Setup click outside handler for comboboxes
@@ -194,9 +170,6 @@ function setupEventListeners() {
 
     // Setup pull-to-refresh
     setupPullToRefresh();
-
-    // Setup splash screen
-    setupSplashScreen();
 
     // Setup swipe gestures
     setupSwipeGestures();

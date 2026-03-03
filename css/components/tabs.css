@@ -5,12 +5,17 @@
 .tabs {
     display: flex;
     gap: 3px;
-    background: var(--glass-bg);
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.04) 0%,
+        rgba(255, 255, 255, 0.02) 100%
+    );
     border: 1px solid var(--glass-border);
     border-radius: var(--r-sm);
     padding: 3px;
     backdrop-filter: var(--glass-blur-sm);
     -webkit-backdrop-filter: var(--glass-blur-sm);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset;
 }
 
 .tab {
@@ -63,20 +68,30 @@
 }
 
 .tab:focus-visible {
-    outline: 2px solid rgba(156, 163, 175, 0.8);
+    outline: 2px solid rgba(139, 158, 255, 0.6);
     outline-offset: 2px;
-    box-shadow: 0 0 0 4px rgba(156, 163, 175, 0.2);
+    box-shadow: 0 0 0 4px rgba(139, 158, 255, 0.15);
 }
 
 .tab.active {
-    background: linear-gradient(135deg, rgba(156, 163, 175, 0.20) 0%, rgba(156, 163, 175, 0.15) 100%);
-    border-color: var(--glass-border-hi);
-    color: #9ca3af;
-    box-shadow: 0 0 16px rgba(156, 163, 175, 0.20);
+    background: linear-gradient(
+        135deg, 
+        rgba(139, 158, 255, 0.25) 0%, 
+        rgba(107, 124, 224, 0.15) 100%
+    );
+    border-color: rgba(139, 158, 255, 0.3);
+    color: var(--accent-light);
+    box-shadow: 
+        0 0 20px rgba(139, 158, 255, 0.25),
+        0 1px 0 rgba(255, 255, 255, 0.08) inset;
 }
 
 .tab:hover:not(.active) {
     color: var(--text);
-    background: var(--glass-bg-hover);
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.08) 0%,
+        rgba(255, 255, 255, 0.04) 100%
+    );
     transform: translateY(-1px);
 }
