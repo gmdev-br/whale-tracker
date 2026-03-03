@@ -92,19 +92,19 @@ export const btcPriceLabelPlugin = {
     afterDraw: (chart) => {
         const opts = chart.options.plugins.btcPriceLabel;
         // DEBUG: Check if plugin is drawing and what price
-        // if (opts && opts.price) console.log('btcPriceLabel drawing at:', opts.price);
-        
+        // if (opts && opts.price) //console.log('btcPriceLabel drawing at:', opts.price);
+
         if (!opts || !opts.text || !opts.price) return;
 
         const { ctx, chartArea: { top, bottom, left, right }, scales: { x, y } } = chart;
-        
+
         // Ensure we have valid scales before trying to use them
         if (!x || !y) return;
-        
+
         const isVertical = chart.options.indexAxis === 'y';
 
         ctx.save();
-        
+
         // Draw the price line (dashed orange line)
         ctx.beginPath();
         ctx.lineWidth = 1;
@@ -119,7 +119,7 @@ export const btcPriceLabelPlugin = {
             }
 
             const yVal = y.getPixelForValue(opts.price);
-            
+
             // Only draw if within visible area (or slightly outside to allow scrolling)
             if (yVal >= top && yVal <= bottom) {
                 ctx.moveTo(left, yVal);
@@ -132,9 +132,9 @@ export const btcPriceLabelPlugin = {
                 ctx.restore();
                 return;
             }
-            
+
             const xVal = x.getPixelForValue(opts.price);
-            
+
             if (xVal >= left && xVal <= right) {
                 ctx.moveTo(xVal, top);
                 ctx.lineTo(xVal, bottom);
@@ -609,7 +609,7 @@ export const btcGridPlugin = {
                     ctx.lineTo(xPixel, bottom);
                     ctx.stroke();
 
-                                    }
+                }
             }
 
             // Draw horizontal lines

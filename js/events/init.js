@@ -2,7 +2,7 @@
 // LIQUID GLASS — Events Initialization
 // ═══════════════════════════════════════════════════════════
 
-console.log('init.js loaded (v2)');
+//console.log('init.js loaded (v2)');
 
 // ═══════════════════════════════════════════════════════════
 // CRITICAL: Handle bfcache restoration for drag-and-drop
@@ -12,11 +12,11 @@ console.log('init.js loaded (v2)');
 // ═══════════════════════════════════════════════════════════
 window.addEventListener('pageshow', (event) => {
     if (event.persisted) {
-        console.log('%c[BFCACHE] Page restored from bfcache, cleaning up...', 'background: #FF5722; color: white; font-weight: bold;');
+        //console.log('%c[BFCACHE] Page restored from bfcache, cleaning up...', 'background: #FF5722; color: white; font-weight: bold;');
         const marker = document.querySelector('.dragging-initialized');
         if (marker) {
             marker.remove();
-            console.log('%c[BFCACHE] ✓ Removed .dragging-initialized marker', 'background: #4CAF50; color: white; font-weight: bold;');
+            //console.log('%c[BFCACHE] ✓ Removed .dragging-initialized marker', 'background: #4CAF50; color: white; font-weight: bold;');
         }
     }
 });
@@ -164,7 +164,7 @@ function setupPullToRefresh() {
 }
 
 function setupEventListeners() {
-    console.log('setupEventListeners called');
+    //console.log('setupEventListeners called');
     // Setup click outside handler for comboboxes
     setupClickOutsideHandler();
 
@@ -633,13 +633,13 @@ function setupEventListeners() {
 
     // Use DOMContentLoaded to ensure elements exist
     function setupComboboxListeners() {
-        console.log('Setting up combobox listeners, readyState:', document.readyState);
+        //console.log('Setting up combobox listeners, readyState:', document.readyState);
         comboboxIds.forEach(fullId => {
             const combobox = getElement(fullId);
-            console.log(`Combobox ${fullId} found:`, !!combobox);
+            //console.log(`Combobox ${fullId} found:`, !!combobox);
             if (combobox) {
                 eventManager.on(combobox, 'click', (e) => {
-                    console.log('Combobox clicked:', fullId);
+                    //console.log('Combobox clicked:', fullId);
                     e.preventDefault();
                     e.stopPropagation();
                     // Extract base ID (remove 'cb-' prefix)
@@ -788,7 +788,7 @@ function setupResizable(element, callback) {
 
 function applyColumnWidthAfterRender() {
     const width = getColumnWidth();
-    console.log('applyColumnWidthAfterRender called with width from state:', width);
+    //console.log('applyColumnWidthAfterRender called with width from state:', width);
     applyColumnWidth(width);
 }
 
@@ -807,8 +807,8 @@ function initializePanels() {
 }
 
 async function loadInitialState() {
-    console.log('%c[INIT] ═══ loadInitialState STARTING ═══', 'background: #2196F3; color: white; font-weight: bold; font-size: 14px;');
-    console.log('[INIT] Timestamp:', new Date().toISOString());
+    //console.log('%c[INIT] ═══ loadInitialState STARTING ═══', 'background: #2196F3; color: white; font-weight: bold; font-size: 14px;');
+    //console.log('[INIT] Timestamp:', new Date().toISOString());
 
     // ═══════════════════════════════════════════════════════════
     // CRITICAL FIX: Remove any existing drag-and-drop marker from bfcache
@@ -817,11 +817,11 @@ async function loadInitialState() {
     // ═══════════════════════════════════════════════════════════
     const existingMarker = document.querySelector('.dragging-initialized');
     if (existingMarker) {
-        console.log('%c[INIT] ⚠ Found existing .dragging-initialized marker (from bfcache), removing...', 'background: #FF5722; color: white; font-weight: bold;');
+        //console.log('%c[INIT] ⚠ Found existing .dragging-initialized marker (from bfcache), removing...', 'background: #FF5722; color: white; font-weight: bold;');
         existingMarker.remove();
-        console.log('%c[INIT] ✓ Marker removed', 'background: #4CAF50; color: white; font-weight: bold;');
+        //console.log('%c[INIT] ✓ Marker removed', 'background: #4CAF50; color: white; font-weight: bold;');
     } else {
-        console.log('[INIT] No existing .dragging-initialized marker found');
+        //console.log('[INIT] No existing .dragging-initialized marker found');
     }
     loadTableData(setAllRows);
 
@@ -831,16 +831,16 @@ async function loadInitialState() {
         label: ccy
     }));
 
-    console.log('Initializing currency comboboxes with options:', currencyOptions);
+    //console.log('Initializing currency comboboxes with options:', currencyOptions);
     cbInit('currencySelect', currencyOptions, onCurrencyChange);
     cbInit('entryCurrencySelect', currencyOptions, onCurrencyChange);
 
     // Load settings FIRST so that initializePanels uses correct saved values
-    console.log('loadInitialState: Loading settings...');
+    //console.log('loadInitialState: Loading settings...');
     loadSettings();
 
     // THEN initialize panels with the loaded settings values
-    console.log('loadInitialState: Initializing panels...');
+    //console.log('loadInitialState: Initializing panels...');
     initializePanels();
 
     // Carregar preços atuais e taxas de câmbio antes de renderizar a tabela
@@ -863,7 +863,7 @@ async function loadInitialState() {
     updateColumnSelectDisplay();
 
     // DEBUG: Log columnOrder after loadSettings
-    console.log('[loadInitialState] columnOrder after loadSettings:', JSON.stringify(getColumnOrder()));
+    //console.log('[loadInitialState] columnOrder after loadSettings:', JSON.stringify(getColumnOrder()));
 
     // Update chart control visibility based on current mode
     const chartMode = getChartMode();
@@ -882,10 +882,10 @@ async function loadInitialState() {
     // This caused unnecessary double rendering on page load. Now we render once after all async effects settle.
     // The safety net delay is kept to ensure all async effects from loadSettings/onCurrencyChange have completed.
     setTimeout(() => {
-        console.log('[loadInitialState] Consolidated render after async effects...');
-        console.log('[loadInitialState] columnOrder BEFORE renderTableImmediate:', JSON.stringify(getColumnOrder()));
+        //console.log('[loadInitialState] Consolidated render after async effects...');
+        //console.log('[loadInitialState] columnOrder BEFORE renderTableImmediate:', JSON.stringify(getColumnOrder()));
         renderTableImmediate();
-        console.log('[loadInitialState] columnOrder AFTER renderTableImmediate:', JSON.stringify(getColumnOrder()));
+        //console.log('[loadInitialState] columnOrder AFTER renderTableImmediate:', JSON.stringify(getColumnOrder()));
     }, 350);
 
     // Apply initial Zen Mode state

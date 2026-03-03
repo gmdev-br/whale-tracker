@@ -38,14 +38,14 @@ const debouncedSave = debounce((settings) => {
 // Immediate save function for critical settings like sort and column order
 function saveSettingsImmediate(settings) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    console.log('Settings saved immediately');
+    //console.log('Settings saved immediately');
 }
 
 export function saveSettings(getChartState = null, savedScatterState = null, savedLiqState = null, scatterChart = null, liqChartInstance = null, immediate = false) {
-    console.log(`%c[saveSettings] ════════════════════════════════════════`, 'background: #4CAF50; color: white; font-weight: bold;');
-    console.log('[saveSettings] CALLED at', new Date().toLocaleTimeString());
-    console.log('[saveSettings] immediate:', immediate);
-    console.trace('[saveSettings] Stack trace:');
+    //console.log(`%c[saveSettings] ════════════════════════════════════════`, 'background: #4CAF50; color: white; font-weight: bold;');
+    //console.log('[saveSettings] CALLED at', new Date().toLocaleTimeString());
+    //console.log('[saveSettings] immediate:', immediate);
+    //console.trace('[saveSettings] Stack trace:');
 
     // Helper to get chart state
     function getChartStateHelper(chart) {
@@ -132,36 +132,36 @@ export function saveSettings(getChartState = null, savedScatterState = null, sav
         autoFitText: getAutoFitText()
     };
 
-    console.log('Saving currency settings:', {
-        currencySelect: settings.currencySelect,
-        entryCurrencySelect: settings.entryCurrencySelect
-    });
+    //console.log('Saving currency settings:', {
+    //currencySelect: settings.currencySelect,
+    //    entryCurrencySelect: settings.entryCurrencySelect
+    //});
 
-    console.log('Saving VALUE column data:', {
-        minValueCcy: settings.minValueCcy,
-        maxValueCcy: settings.maxValueCcy
-    });
+    //console.log('Saving VALUE column data:', {
+    //minValueCcy: settings.minValueCcy,
+    //maxValueCcy: settings.maxValueCcy
+    //});
 
-    console.log('Saving columnWidths:', JSON.stringify(settings.columnWidths));
-    console.log('Saving columnOrder:', JSON.stringify(settings.columnOrder));
-    console.log('Saving aggColumnOrder:', JSON.stringify(settings.aggColumnOrder));
-    console.log('Saving aggColumnOrderResumida:', JSON.stringify(settings.aggColumnOrderResumida));
+    //console.log('Saving columnWidths:', JSON.stringify(settings.columnWidths));
+    //console.log('Saving columnOrder:', JSON.stringify(settings.columnOrder));
+    //console.log('Saving aggColumnOrder:', JSON.stringify(settings.aggColumnOrder));
+    //console.log('Saving aggColumnOrderResumida:', JSON.stringify(settings.aggColumnOrderResumida));
 
     if (immediate) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-        console.log('%c[saveSettings] ✓ Settings saved IMMEDIATELY', 'color: #4CAF50; font-weight: bold;');
-        console.log(`%c[saveSettings] ════════════════════════════════════════`, 'background: #4CAF50; color: white; font-weight: bold;');
+        //console.log('%c[saveSettings] ✓ Settings saved IMMEDIATELY', 'color: #4CAF50; font-weight: bold;');
+        //console.log(`%c[saveSettings] ════════════════════════════════════════`, 'background: #4CAF50; color: white; font-weight: bold;');
     }
     else {
-        console.log('[saveSettings] Debouncing save...');
+        //console.log('[saveSettings] Debouncing save...');
         debouncedSave(settings);
-        console.log(`%c[saveSettings] ════════════════════════════════════════`, 'background: #4CAF50; color: white; font-weight: bold;');
+        //console.log(`%c[saveSettings] ════════════════════════════════════════`, 'background: #4CAF50; color: white; font-weight: bold;');
     }
 }
 
 export function loadSettings() {
-    console.log(`%c[loadSettings] ════════════════════════════════════════`, 'background: #FF9800; color: white; font-weight: bold;');
-    console.log('[loadSettings] CALLED at', new Date().toLocaleTimeString());
+    //console.log(`%c[loadSettings] ════════════════════════════════════════`, 'background: #FF9800; color: white; font-weight: bold;');
+    //console.log('[loadSettings] CALLED at', new Date().toLocaleTimeString());
 
     const saved = localStorage.getItem(STORAGE_KEY);
     let s = null;
@@ -169,12 +169,12 @@ export function loadSettings() {
     if (saved) {
         try {
             s = JSON.parse(saved);
-            console.log('[loadSettings] Settings loaded from localStorage');
+            //console.log('[loadSettings] Settings loaded from localStorage');
         } catch (e) {
             console.warn('Failed to parse saved settings', e);
         }
     } else {
-        console.log('[loadSettings] NO saved settings found in localStorage');
+        //console.log('[loadSettings] NO saved settings found in localStorage');
     }
 
     // Initialize column order
@@ -194,34 +194,34 @@ export function loadSettings() {
                 }
             }
         });
-        console.log('[loadSettings] Setting columnOrder from saved:', s.columnOrder);
+        //console.log('[loadSettings] Setting columnOrder from saved:', s.columnOrder);
         setColumnOrder(s.columnOrder);
     } else {
         // Initialize with default column order
         const defaultOrder = COLUMN_DEFS.map(c => c.key);
-        console.log('[loadSettings] Setting DEFAULT columnOrder:', defaultOrder);
+        //console.log('[loadSettings] Setting DEFAULT columnOrder:', defaultOrder);
         setColumnOrder(defaultOrder);
         s = s || {};
         s.columnOrder = defaultOrder;
     }
 
     // Initialize aggregation column orders
-    console.log('%c[SETTINGS:LOAD] ═══ Loading aggColumnOrder ═══', 'background: #3F51B5; color: white; font-weight: bold;');
+    //console.log('%c[SETTINGS:LOAD] ═══ Loading aggColumnOrder ═══', 'background: #3F51B5; color: white; font-weight: bold;');
     if (s && s.aggColumnOrder && s.aggColumnOrder.length > 0) {
-        console.log('%c[SETTINGS:LOAD] Setting aggColumnOrder from saved:', 'color: #4CAF50;', JSON.stringify(s.aggColumnOrder));
+        //console.log('%c[SETTINGS:LOAD] Setting aggColumnOrder from saved:', 'color: #4CAF50;', JSON.stringify(s.aggColumnOrder));
         setAggColumnOrder(s.aggColumnOrder);
-        console.log('%c[SETTINGS:LOAD] ✓ aggColumnOrder set in state', 'color: #4CAF50;');
+        //console.log('%c[SETTINGS:LOAD] ✓ aggColumnOrder set in state', 'color: #4CAF50;');
     } else {
-        console.log('%c[SETTINGS:LOAD] NO aggColumnOrder found in storage', 'color: #FF9800;');
+        //console.log('%c[SETTINGS:LOAD] NO aggColumnOrder found in storage', 'color: #FF9800;');
     }
 
-    console.log('%c[SETTINGS:LOAD] ═══ Loading aggColumnOrderResumida ═══', 'background: #3F51B5; color: white; font-weight: bold;');
+    //console.log('%c[SETTINGS:LOAD] ═══ Loading aggColumnOrderResumida ═══', 'background: #3F51B5; color: white; font-weight: bold;');
     if (s && s.aggColumnOrderResumida && s.aggColumnOrderResumida.length > 0) {
-        console.log('%c[SETTINGS:LOAD] Setting aggColumnOrderResumida from saved:', 'color: #4CAF50;', JSON.stringify(s.aggColumnOrderResumida));
+        //console.log('%c[SETTINGS:LOAD] Setting aggColumnOrderResumida from saved:', 'color: #4CAF50;', JSON.stringify(s.aggColumnOrderResumida));
         setAggColumnOrderResumida(s.aggColumnOrderResumida);
-        console.log('%c[SETTINGS:LOAD] ✓ aggColumnOrderResumida set in state', 'color: #4CAF50;');
+        //console.log('%c[SETTINGS:LOAD] ✓ aggColumnOrderResumida set in state', 'color: #4CAF50;');
     } else {
-        console.log('%c[SETTINGS:LOAD] NO aggColumnOrderResumida found in storage', 'color: #FF9800;');
+        //console.log('%c[SETTINGS:LOAD] NO aggColumnOrderResumida found in storage', 'color: #FF9800;');
     }
 
     // Initialize visible columns
@@ -253,14 +253,14 @@ export function loadSettings() {
             });
         }
 
-        console.log('[loadSettings] Setting visibleColumns from saved (sanitized):', s.visibleColumns);
+        //console.log('[loadSettings] Setting visibleColumns from saved (sanitized):', s.visibleColumns);
         setVisibleColumns(s.visibleColumns);
         applyColumnVisibility();
         updateColumnSelectDisplay();
     } else {
         // Initialize with all columns visible
         const defaultVisible = COLUMN_DEFS.map(c => c.key);
-        console.log('[loadSettings] Setting default visibleColumns:', defaultVisible);
+        //console.log('[loadSettings] Setting default visibleColumns:', defaultVisible);
         setVisibleColumns(defaultVisible);
         s = s || {};
         s.visibleColumns = defaultVisible;
@@ -286,7 +286,7 @@ export function loadSettings() {
         });
 
         if (hasChanges) {
-            console.log('[loadSettings] Updating columnOrder with missing columns:', updatedOrder);
+            //console.log('[loadSettings] Updating columnOrder with missing columns:', updatedOrder);
             setColumnOrder(updatedOrder);
         }
     }
@@ -399,10 +399,10 @@ export function loadSettings() {
     if (s.minValueCcy) document.getElementById('minValueCcy').value = s.minValueCcy;
     if (s.maxValueCcy) document.getElementById('maxValueCcy').value = s.maxValueCcy;
 
-    console.log('Loading VALUE column data:', {
-        minValueCcy: s.minValueCcy,
-        maxValueCcy: s.maxValueCcy
-    });
+    //console.log('Loading VALUE column data:', {
+    //minValueCcy: s.minValueCcy,
+    //   maxValueCcy: s.maxValueCcy
+    //});
     if (s.minEntryCcy) document.getElementById('minEntryCcy').value = s.minEntryCcy;
     if (s.maxEntryCcy) document.getElementById('maxEntryCcy').value = s.maxEntryCcy;
     if (s.minUpnl) document.getElementById('minUpnl').value = s.minUpnl;
@@ -412,24 +412,24 @@ export function loadSettings() {
     if (s.currencySelect) cbSetValue('currencySelect', s.currencySelect);
     if (s.entryCurrencySelect) cbSetValue('entryCurrencySelect', s.entryCurrencySelect);
 
-    console.log('Loading currency settings:', {
-        currencySelect: s.currencySelect,
-        entryCurrencySelect: s.entryCurrencySelect
-    });
+    //console.log('Loading currency settings:', {
+    //currencySelect: s.currencySelect,
+    //   entryCurrencySelect: s.entryCurrencySelect
+    //});
 
     // Trigger currency change handler to update state and headers
     // IMPORTANT: During initialization, we should NOT call renderTable here
     // because it will render the table before loadInitialState() can apply
     // the saved columnOrder. The render will happen later in loadInitialState().
     if (s.currencySelect || s.entryCurrencySelect) {
-        console.log('[loadSettings] Updating currency state WITHOUT triggering render');
+        //console.log('[loadSettings] Updating currency state WITHOUT triggering render');
         // Only update the currency state, don't trigger onCurrencyChange which calls renderTable
         if (s.currencySelect) setActiveCurrency(s.currencySelect);
         if (s.entryCurrencySelect) setActiveEntryCurrency(s.entryCurrencySelect);
-        console.log('[loadSettings] Currency state updated:', {
-            activeCurrency: s.currencySelect,
-            activeEntryCurrency: s.entryCurrencySelect
-        });
+        //console.log('[loadSettings] Currency state updated:', {
+        //activeCurrency: s.currencySelect,
+        //    activeEntryCurrency: s.entryCurrencySelect
+        //});
 
         // Update column headers to reflect the loaded currency settings
         // This is done without calling renderTable to avoid resetting column order
@@ -456,13 +456,13 @@ export function loadSettings() {
         document.getElementById('coinFilter').value = s.coinFilter;
     }
     if (s.selectedCoins) {
-        console.log('Loading selectedCoins from settings:', s.selectedCoins);
+        //console.log('Loading selectedCoins from settings:', s.selectedCoins);
         setSelectedCoins(s.selectedCoins);
         updateCoinSearchLabel();
         renderQuotesPanel();
     } else if (s.coinFilter) {
         // Fallback for old coinFilter format
-        console.log('Using fallback coinFilter:', s.coinFilter);
+        //console.log('Using fallback coinFilter:', s.coinFilter);
         document.getElementById('coinSearch').value = s.coinFilter;
     }
     if (s.priceMode) {
@@ -477,12 +477,12 @@ export function loadSettings() {
         priceIntervalRanges.forEach(el => el.value = s.priceUpdateInterval / 1000);
     }
     if (s.columnWidths) {
-        console.log('[loadSettings] Loading columnWidths from storage:', JSON.stringify(s.columnWidths));
+        //console.log('[loadSettings] Loading columnWidths from storage:', JSON.stringify(s.columnWidths));
         setColumnWidths(s.columnWidths);
-        console.log('[loadSettings] Calling applyColumnWidths() after loading...');
+        //console.log('[loadSettings] Calling applyColumnWidths() after loading...');
         applyColumnWidths();
     } else {
-        console.log('[loadSettings] NO columnWidths found in storage, using defaults');
+        //console.log('[loadSettings] NO columnWidths found in storage, using defaults');
     }
     if (s.rankingLimit) {
         const rankingLimits = document.querySelectorAll('.js-ranking-limit');
@@ -647,12 +647,12 @@ export function loadSettings() {
     // ═══════════════════════════════════════════════════════════
     // PERSISTENCE DEBUG: Load Summary
     // ═══════════════════════════════════════════════════════════
-    console.log(`%c[PERSISTENCE:LOAD] ═══ ALL VALUES LOADED ═══`, 'background: #4CAF50; color: white; font-weight: bold; font-size: 12px;');
-    console.log(`%c[PERSISTENCE:LOAD] columnWidths:`, 'color: #4CAF50; font-weight: bold;', JSON.stringify(getColumnWidths(), null, 2));
-    console.log(`%c[PERSISTENCE:LOAD] columnOrder:`, 'color: #4CAF50; font-weight: bold;', JSON.stringify(getColumnOrder(), null, 2));
-    console.log(`%c[PERSISTENCE:LOAD] aggColumnOrder:`, 'color: #4CAF50; font-weight: bold;', JSON.stringify(getAggColumnOrder(), null, 2));
-    console.log(`%c[PERSISTENCE:LOAD] aggColumnOrderResumida:`, 'color: #4CAF50; font-weight: bold;', JSON.stringify(getAggColumnOrderResumida(), null, 2));
-    console.log(`%c[PERSISTENCE:LOAD] ✓ DONE`, 'background: #4CAF50; color: white; font-weight: bold;');
+    //console.log(`%c[PERSISTENCE:LOAD] ═══ ALL VALUES LOADED ═══`, 'background: #4CAF50; color: white; font-weight: bold; font-size: 12px;');
+    //console.log(`%c[PERSISTENCE:LOAD] columnWidths:`, 'color: #4CAF50; font-weight: bold;', JSON.stringify(getColumnWidths(), null, 2));
+    //console.log(`%c[PERSISTENCE:LOAD] columnOrder:`, 'color: #4CAF50; font-weight: bold;', JSON.stringify(getColumnOrder(), null, 2));
+    //console.log(`%c[PERSISTENCE:LOAD] aggColumnOrder:`, 'color: #4CAF50; font-weight: bold;', JSON.stringify(getAggColumnOrder(), null, 2));
+    //console.log(`%c[PERSISTENCE:LOAD] aggColumnOrderResumida:`, 'color: #4CAF50; font-weight: bold;', JSON.stringify(getAggColumnOrderResumida(), null, 2));
+    //console.log(`%c[PERSISTENCE:LOAD] ✓ DONE`, 'background: #4CAF50; color: white; font-weight: bold;');
 }
 
 function updateAggVolumeUI(unit) {

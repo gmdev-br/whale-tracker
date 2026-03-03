@@ -54,7 +54,7 @@ export async function fetchMarketCapRanking() {
         }));
 
         marketCapCacheTime = now;
-        console.log('Market cap data fetched and cached:', marketCapCache.length, 'coins');
+        //console.log('Market cap data fetched and cached:', marketCapCache.length, 'coins');
 
         return marketCapCache;
 
@@ -85,7 +85,7 @@ export async function updateRankingPanel() {
 
         const rankingLimit = getRankingLimit();
         const selectedCoins = getSelectedCoins();
-        
+
         // Get whale position data first (this is our primary data source)
         const allRows = getAllRows();
         const whaleStats = {};
@@ -112,7 +112,7 @@ export async function updateRankingPanel() {
 
         // If we have whale data but no market cap data, use whale ranking
         if (marketCapData.length === 0) {
-            console.log('Using whale position ranking (no market cap data)');
+            //console.log('Using whale position ranking (no market cap data)');
             renderWhalePositionRanking(panel, whaleStats, rankingLimit, selectedCoins);
             return;
         }
@@ -130,7 +130,7 @@ export async function updateRankingPanel() {
                 };
             });
 
-        console.log('Market cap ranking updated:', combinedData.length, 'coins');
+        //console.log('Market cap ranking updated:', combinedData.length, 'coins');
 
         panel.innerHTML = `
             <div style="display: flex; align-items: center; gap: 8px; margin-right: 10px; color: var(--muted); font-size: 11px; flex-shrink: 0;">
@@ -168,7 +168,7 @@ export async function updateRankingPanel() {
         }).join('')}
         `;
 
-        console.log('Market cap ranking panel updated with', combinedData.length, 'coins');
+        //console.log('Market cap ranking panel updated with', combinedData.length, 'coins');
     }, RANKING_PANEL_DEBOUNCE_MS);
 }
 
@@ -215,8 +215,8 @@ function renderWhalePositionRanking(panel, whaleStats, rankingLimit, selectedCoi
             `;
     }).join('')}
     `;
-    
-    console.log('Whale position ranking rendered with', sortedCoins.length, 'coins');
+
+    //console.log('Whale position ranking rendered with', sortedCoins.length, 'coins');
 }
 
 // Fallback function for whale position ranking (kept for compatibility)
@@ -271,7 +271,7 @@ export function updateQuotesHTML() {
     if (!panel) return;
 
     // DEBUG: Log quotes update
-    console.log(`[QuotesUpdate] ${new Date().toLocaleTimeString()} - Updating DOM`);
+    //console.log(`[QuotesUpdate] ${new Date().toLocaleTimeString()} - Updating DOM`);
 
     const selectedCoins = getSelectedCoins();
     const currentPrices = getCurrentPrices();
@@ -354,7 +354,7 @@ export function startPriceTicker() {
 
                 // DEBUG: Log BTC price update
                 if (data['BTC']) {
-                    console.log(`[PriceUpdate] ${new Date().toLocaleTimeString()} - BTC Price: ${data['BTC']} | Total Coins Updated: ${Object.keys(data).length}`);
+                    //console.log(`[PriceUpdate] ${new Date().toLocaleTimeString()} - BTC Price: ${data['BTC']} | Total Coins Updated: ${Object.keys(data).length}`);
                 }
 
                 // Update ALL prices to ensure BTC and other reference currencies are up to date
@@ -418,13 +418,13 @@ export function startPriceTicker() {
                     scatterChart.options.plugins.btcPriceLabel.text = `BTC: ${sym}${refPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
                     // DEBUG: Chart update
-                    console.log(`[ChartUpdate] Scatter refPrice: ${refPrice} (Entry Currency: ${activeEntryCurrency})`);
+                    //console.log(`[ChartUpdate] Scatter refPrice: ${refPrice} (Entry Currency: ${activeEntryCurrency})`);
                 }
 
                 // DEBUG: Check chart validity before update
                 const canvas = document.getElementById('scatterChart');
                 const section = document.getElementById('chart-section');
-                console.log(`[ChartUpdate] scatterChart exists: ${!!scatterChart}, canvas exists: ${!!canvas}, canvas in DOM: ${canvas?.isConnected}, section display: ${section?.style.display}, chart.ctx: ${!!scatterChart?.ctx}, chart.canvas: ${!!scatterChart?.canvas}`);
+                //console.log(`[ChartUpdate] scatterChart exists: ${!!scatterChart}, canvas exists: ${!!canvas}, canvas in DOM: ${canvas?.isConnected}, section display: ${section?.style.display}, chart.ctx: ${!!scatterChart?.ctx}, chart.canvas: ${!!scatterChart?.canvas}`);
 
                 // Only update if chart is valid and visible
                 if (scatterChart.ctx && scatterChart.canvas && canvas && canvas.isConnected && section && section.style.display !== 'none') {
@@ -469,13 +469,13 @@ export function startPriceTicker() {
                     liqChart.options.plugins.btcPriceLabel.text = `BTC: ${sym}${refPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
                     // DEBUG: LiqChart update
-                    console.log(`[ChartUpdate] LiqChart refPrice: ${refPrice}`);
+                    //console.log(`[ChartUpdate] LiqChart refPrice: ${refPrice}`);
                 }
 
                 // DEBUG: Check liqChart validity before update
                 const liqCanvas = document.getElementById('liqScatterChart');
                 const liqSection = document.getElementById('liq-chart-section');
-                console.log(`[ChartUpdate] liqChart exists: ${!!liqChart}, canvas exists: ${!!liqCanvas}, canvas in DOM: ${liqCanvas?.isConnected}, section display: ${liqSection?.style.display}, chart.ctx: ${!!liqChart?.ctx}, chart.canvas: ${!!liqChart?.canvas}`);
+                //console.log(`[ChartUpdate] liqChart exists: ${!!liqChart}, canvas exists: ${!!liqCanvas}, canvas in DOM: ${liqCanvas?.isConnected}, section display: ${liqSection?.style.display}, chart.ctx: ${!!liqChart?.ctx}, chart.canvas: ${!!liqChart?.canvas}`);
 
                 // Only update if chart is valid and visible
                 if (liqChart.ctx && liqChart.canvas && liqCanvas && liqCanvas.isConnected && liqSection && liqSection.style.display !== 'none') {

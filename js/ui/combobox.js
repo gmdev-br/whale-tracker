@@ -23,16 +23,16 @@ const CB_OPTIONS = {}; // id -> [{value, label}]
 const CB_TIMERS = {};  // id -> timeout
 
 export function cbInit(id, options, _onChangeFn) {
-    console.log('cbInit called with:', { id, options, _onChangeFn: typeof _onChangeFn });
+    //console.log('cbInit called with:', { id, options, _onChangeFn: typeof _onChangeFn });
     CB_OPTIONS[id] = options; // [{value, label}]
     cbRender(id);
     // Set display to match current hidden value
     const hidden = document.getElementById(id);
-    console.log('Hidden input found:', !!hidden, 'Current value:', hidden?.value);
+    //console.log('Hidden input found:', !!hidden, 'Current value:', hidden?.value);
     if (hidden && hidden.value) {
         const opt = options.find(o => o.value === hidden.value);
         const search = document.getElementById(`cb-${id}-search`);
-        console.log('Setting initial display value:', opt?.label);
+        //console.log('Setting initial display value:', opt?.label);
         if (search && opt) search.value = opt.label;
     }
 }
@@ -74,7 +74,7 @@ export function cbRender(id) {
 }
 
 export function cbSelect(id, value, _label, _onChangeFn, renderTable) {
-    console.log('cbSelect called with:', { id, value, _label, _onChangeFn: typeof _onChangeFn });
+    //console.log('cbSelect called with:', { id, value, _label, _onChangeFn: typeof _onChangeFn });
     if (CB_TIMERS[id]) { clearTimeout(CB_TIMERS[id]); delete CB_TIMERS[id]; }
     const hidden = document.getElementById(id);
     if (hidden) hidden.value = value;
@@ -84,12 +84,12 @@ export function cbSelect(id, value, _label, _onChangeFn, renderTable) {
     // Fire the appropriate callback
     if (id === 'currencySelect' || id === 'entryCurrencySelect') {
         // Call the currency change handler
-        console.log('Calling currency change handler for:', id);
+        //console.log('Calling currency change handler for:', id);
         if (_onChangeFn) {
-            console.log('Currency change handler exists, calling it...');
+            //console.log('Currency change handler exists, calling it...');
             _onChangeFn();
         } else {
-            console.log('Currency change handler is undefined');
+            //console.log('Currency change handler is undefined');
         }
     } else {
         saveSettings();
@@ -98,23 +98,23 @@ export function cbSelect(id, value, _label, _onChangeFn, renderTable) {
 }
 
 export function cbSetValue(id, value) {
-    console.log('cbSetValue called with:', { id, value });
+    //console.log('cbSetValue called with:', { id, value });
     const options = CB_OPTIONS[id] || [];
     const opt = options.find(o => o.value === value);
-    console.log('Found option:', opt);
+    //console.log('Found option:', opt);
     if (!opt) {
-        console.log('Option not found for value:', value, 'Available options:', options);
+        //console.log('Option not found for value:', value, 'Available options:', options);
         return;
     }
     const hidden = document.getElementById(id);
     if (hidden) {
         hidden.value = value;
-        console.log('Set hidden input value to:', value);
+        //console.log('Set hidden input value to:', value);
     }
     const search = document.getElementById(`cb-${id}-search`);
     if (search) {
         search.value = opt.label;
-        console.log('Set search input value to:', opt.label);
+        //console.log('Set search input value to:', opt.label);
     }
 }
 
@@ -187,7 +187,7 @@ export function selectCoin(value, _label) {
 export function updateCoinSearchLabel() {
     const search = document.getElementById('coinSearch');
     const selectedCoins = getSelectedCoins();
-    console.log('updateCoinSearchLabel called, selectedCoins:', selectedCoins);
+    //console.log('updateCoinSearchLabel called, selectedCoins:', selectedCoins);
     if (selectedCoins.length === 0) {
         search.value = '';
     } else if (selectedCoins.length === 1) {
@@ -198,7 +198,7 @@ export function updateCoinSearchLabel() {
 }
 
 export function updateCoinFilter(allRows) {
-    console.log('updateCoinFilter called, selectedCoins:', getSelectedCoins());
+    //console.log('updateCoinFilter called, selectedCoins:', getSelectedCoins());
     const coins = [...new Set(allRows.map(r => r.coin))].sort();
     _coinOptions = coins;
     // Only update label if no coins are selected (preserve user selection)

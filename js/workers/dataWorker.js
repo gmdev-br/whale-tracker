@@ -82,9 +82,9 @@ self.onmessage = async function (e) {
     } = filterState;
 
     // DEBUG: Log all received data
-    console.log(`[Worker] Received message:`);
-    console.log(`[Worker] allRows count: ${allRows?.length || 0}`);
-    console.log(`[Worker] selectedCoins:`, selectedCoins);
+    //console.log(`[Worker] Received message:`);
+    //console.log(`[Worker] allRows count: ${allRows?.length || 0}`);
+    //console.log(`[Worker] selectedCoins:`, selectedCoins);
 
     // PERFORMANCE: Pre-calculate coinSet once for efficient validation
     const coinSet = (allRows?.length > 0) ? new Set(allRows.map(r => r.coin)) : new Set();
@@ -98,7 +98,7 @@ self.onmessage = async function (e) {
             console.warn(`[Worker] selectedCoins has ${selectedCoins.length} coins but none match data. Ignoring coin filter.`);
             effectiveSelectedCoins = [];
         } else if (matchingCoins.length !== selectedCoins.length) {
-            console.log(`[Worker] Filtering to ${matchingCoins.length}/${selectedCoins.length} selected coins`);
+            //console.log(`[Worker] Filtering to ${matchingCoins.length}/${selectedCoins.length} selected coins`);
             effectiveSelectedCoins = matchingCoins;
         }
     }

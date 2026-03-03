@@ -96,7 +96,7 @@ export async function startScan(callbacks) {
         // Show scan completion time
         const scanDuration = Date.now() - scanStartTime;
         const durationSeconds = Math.round(scanDuration / 1000);
-        console.log(`Scan completed in ${durationSeconds}s`);
+        //console.log(`Scan completed in ${durationSeconds}s`);
 
     } catch (e) {
         console.error('Scan error:', e);

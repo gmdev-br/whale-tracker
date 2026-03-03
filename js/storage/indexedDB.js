@@ -33,7 +33,7 @@ class IndexedDBStorage {
 
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                
+
                 // Create object store for table data
                 if (!db.objectStoreNames.contains(STORE_NAME)) {
                     const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -45,11 +45,11 @@ class IndexedDBStorage {
 
     async save(key, data) {
         await this.initPromise;
-        
+
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction([STORE_NAME], 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
-            
+
             const record = {
                 id: key,
                 data: data,
@@ -60,7 +60,7 @@ class IndexedDBStorage {
 
             request.onsuccess = () => {
                 const size = new Blob([JSON.stringify(data)]).size;
-                console.log(`[IndexedDB] Saved ${key}: ${(size / 1024).toFixed(1)} KB`);
+                //console.log(`[IndexedDB] Saved ${key}: ${(size / 1024).toFixed(1)} KB`);
                 resolve();
             };
 
@@ -73,7 +73,7 @@ class IndexedDBStorage {
 
     async load(key) {
         await this.initPromise;
-        
+
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction([STORE_NAME], 'readonly');
             const store = transaction.objectStore(STORE_NAME);
@@ -82,7 +82,7 @@ class IndexedDBStorage {
             request.onsuccess = () => {
                 const record = request.result;
                 if (record) {
-                    console.log(`[IndexedDB] Loaded ${key}, age: ${Math.floor((Date.now() - record.timestamp) / 1000)}s`);
+                    //console.log(`[IndexedDB] Loaded ${key}, age: ${Math.floor((Date.now() - record.timestamp) / 1000)}s`);
                     resolve(record.data);
                 } else {
                     resolve(null);
@@ -98,14 +98,14 @@ class IndexedDBStorage {
 
     async delete(key) {
         await this.initPromise;
-        
+
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction([STORE_NAME], 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
             const request = store.delete(key);
 
             request.onsuccess = () => {
-                console.log(`[IndexedDB] Deleted ${key}`);
+                //console.log(`[IndexedDB] Deleted ${key}`);
                 resolve();
             };
 
@@ -118,14 +118,14 @@ class IndexedDBStorage {
 
     async clear() {
         await this.initPromise;
-        
+
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction([STORE_NAME], 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
             const request = store.clear();
 
             request.onsuccess = () => {
-                console.log('[IndexedDB] Cleared all data');
+                //console.log('[IndexedDB] Cleared all data');
                 resolve();
             };
 
@@ -138,7 +138,7 @@ class IndexedDBStorage {
 
     async getUsage() {
         await this.initPromise;
-        
+
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction([STORE_NAME], 'readonly');
             const store = transaction.objectStore(STORE_NAME);
@@ -182,7 +182,7 @@ class IndexedDBStorage {
 
     async cleanupOldData(maxAge = 7 * 24 * 60 * 60 * 1000) {
         await this.initPromise;
-        
+
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction([STORE_NAME], 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
@@ -193,7 +193,7 @@ class IndexedDBStorage {
 
             request.onsuccess = (event) => {
                 const cursor = event.target.result;
-                
+
                 if (cursor) {
                     if (cursor.value.timestamp < cutoffTime) {
                         cursor.delete();
@@ -201,7 +201,7 @@ class IndexedDBStorage {
                     }
                     cursor.continue();
                 } else {
-                    console.log(`[IndexedDB] Cleaned up ${deletedCount} old records`);
+                    //console.log(`[IndexedDB] Cleaned up ${deletedCount} old records`);
                     resolve(deletedCount);
                 }
             };
@@ -236,7 +236,7 @@ export class HybridStorage {
             // Use localStorage for small data
             try {
                 localStorage.setItem(key, JSON.stringify(data));
-                console.log(`[Hybrid] ${key}: ${(dataSize / 1024).toFixed(1)} KB (localStorage)`);
+                //console.log(`[Hybrid] ${key}: ${(dataSize / 1024).toFixed(1)} KB (localStorage)`);
                 return;
             } catch (e) {
                 if (e.name === 'QuotaExceededError') {

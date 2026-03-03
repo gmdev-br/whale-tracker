@@ -63,7 +63,7 @@ export function throttle(func, wait = 100) {
  */
 export function memoize(func, keyGenerator = null) {
     const cache = new Map();
-    return function(...args) {
+    return function (...args) {
         const key = keyGenerator ? keyGenerator(...args) : JSON.stringify(args);
         if (cache.has(key)) {
             return cache.get(key);
@@ -122,7 +122,7 @@ export class Cache {
  */
 export function batchRAF(callback) {
     let scheduled = false;
-    return function(...args) {
+    return function (...args) {
         if (!scheduled) {
             scheduled = true;
             requestAnimationFrame(() => {
@@ -137,11 +137,11 @@ export function batchRAF(callback) {
  * Measure execution time of a function
  */
 export function measureTime(func, label) {
-    return function(...args) {
+    return function (...args) {
         const start = performance.now();
         const result = func.apply(this, args);
         const end = performance.now();
-        console.log(`${label}: ${(end - start).toFixed(2)}ms`);
+        //console.log(`${label}: ${(end - start).toFixed(2)}ms`);
         return result;
     };
 }

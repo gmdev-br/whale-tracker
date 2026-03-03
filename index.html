@@ -1199,29 +1199,29 @@
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
                     .then((registration) => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        //console.log('ServiceWorker registration successful with scope: ', registration.scope);
 
                         // Check for updates
                         registration.addEventListener('updatefound', () => {
                             const newWorker = registration.installing;
-                            console.log('Service Worker update found!');
+                            //console.log('Service Worker update found!');
 
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    console.log('New content is available; please refresh.');
+                                    //console.log('New content is available; please refresh.');
                                     // Optional: Show toast to user to refresh
                                 }
                             });
                         });
                     })
                     .catch((error) => {
-                        console.log('ServiceWorker registration failed: ', error);
+                        //console.log('ServiceWorker registration failed: ', error);
                     });
             });
 
             // Reload when controller changes
             navigator.serviceWorker.addEventListener('controllerchange', () => {
-                console.log('Controller changed, reloading page...');
+                //console.log('Controller changed, reloading page...');
                 window.location.reload();
             });
         }

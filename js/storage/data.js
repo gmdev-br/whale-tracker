@@ -42,7 +42,7 @@ export async function saveTableData() {
 
         const data = JSON.stringify(payload);
         await hybridStorage.save(DATA_KEY, payload);
-        console.log(`Saved ${allRows.length} rows (${(data.length / 1024).toFixed(1)} KB) using format v2`);
+        //console.log(`Saved ${allRows.length} rows (${(data.length / 1024).toFixed(1)} KB) using format v2`);
     } catch (e) {
         console.error('Failed to save table data:', e);
         if (e.name === 'QuotaExceededError' || e.code === 22) {
@@ -52,19 +52,19 @@ export async function saveTableData() {
 }
 
 export async function loadTableData(setAllRows) {
-    console.log('[DIAG] loadTableData: starting...');
+    //console.log('[DIAG] loadTableData: starting...');
     try {
         const saved = await hybridStorage.load(DATA_KEY);
-        console.log('[DIAG] loadTableData: loaded data length =', saved ? JSON.stringify(saved).length : 'null');
+        //console.log('[DIAG] loadTableData: loaded data length =', saved ? JSON.stringify(saved).length : 'null');
 
         if (saved) {
-            console.log('[DIAG] loadTableData: parsed version =', saved.v, 'is array?', Array.isArray(saved));
+            //console.log('[DIAG] loadTableData: parsed version =', saved.v, 'is array?', Array.isArray(saved));
 
             // Handle Version 2 (Optimized)
             if (saved.v === 2 && Array.isArray(saved.rows)) {
                 const rowCount = saved.rows.length;
                 const metaCount = Object.keys(saved.meta || {}).length;
-                console.log(`[DIAG] loadTableData: v2 format, ${rowCount} rows, ${metaCount} metas`);
+                //console.log(`[DIAG] loadTableData: v2 format, ${rowCount} rows, ${metaCount} metas`);
 
                 if (saved.meta) setWhaleMeta(saved.meta);
 
@@ -89,15 +89,15 @@ export async function loadTableData(setAllRows) {
                     windowPerformances: saved.meta?.[r.a]?.windowPerformances || {}
                 }));
 
-                console.log('[DIAG] loadTableData: calling setAllRows with', rows.length, 'rows');
+                //console.log('[DIAG] loadTableData: calling setAllRows with', rows.length, 'rows');
                 setAllRows(rows);
-                console.log('[DIAG] loadTableData: setAllRows done');
+                //console.log('[DIAG] loadTableData: setAllRows done');
                 return;
             }
 
             // Fallback for Version 1 (Legacy)
             if (Array.isArray(saved) && saved.length > 0) {
-                console.log(`[DIAG] loadTableData: legacy v1 format, ${saved.length} rows`);
+                //console.log(`[DIAG] loadTableData: legacy v1 format, ${saved.length} rows`);
                 setAllRows(saved);
                 // Extract meta from legacy rows to populate whaleMeta
                 const meta = {};

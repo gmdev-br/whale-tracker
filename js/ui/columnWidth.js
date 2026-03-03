@@ -27,11 +27,11 @@ export function initColumnWidthControl() {
 
     // Initialize with saved value or default
     const initialWidth = getColumnWidth();
-    
+
     // Sync both mobile and desktop controls
     syncControls(['.js-column-width-input', '.js-column-width-val'], initialWidth);
 
-    console.log('Column width control initialized with width:', initialWidth);
+    //console.log('Column width control initialized with width:', initialWidth);
 
     // Apply initial column width after a delay to ensure table is rendered
     setTimeout(() => applyColumnWidth(initialWidth), 500);
@@ -60,7 +60,7 @@ export function initColumnWidthControl() {
 }
 
 export function applyColumnWidth(width) {
-    console.log('applyColumnWidth called with width:', width);
+    //console.log('applyColumnWidth called with width:', width);
 
     const table = document.getElementById('positionsTable');
     if (!table) {
@@ -73,5 +73,5 @@ export function applyColumnWidth(width) {
     document.documentElement.style.setProperty('--column-width', width + 'px');
     document.documentElement.style.setProperty('--column-width-mobile', width + 'px');
 
-    console.log('Column width variable --column-width set to:', width + 'px');
+    //console.log('Column width variable --column-width set to:', width + 'px');
 }

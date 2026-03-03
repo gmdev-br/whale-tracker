@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════════════════════════
+﻿// ═══════════════════════════════════════════════════════════
 // LIQUID GLASS — UI Table
 // ═══════════════════════════════════════════════════════════
 
@@ -65,14 +65,14 @@ let lastVisibleColumns = null;
  */
 function areHeadersValid() {
     if (!cachedHeaders) {
-        console.log('[areHeadersValid] cachedHeaders is null/undefined');
+        //console.log('[areHeadersValid] cachedHeaders is null/undefined');
         return false;
     }
 
     // Check if at least one header is still attached to DOM
     const headers = Object.values(cachedHeaders);
     if (headers.length === 0) {
-        console.log('[areHeadersValid] cachedHeaders is empty');
+        //console.log('[areHeadersValid] cachedHeaders is empty');
         return false;
     }
 
@@ -81,7 +81,7 @@ function areHeadersValid() {
     const sampleHeader = headers[0];
     const isConnected = sampleHeader.isConnected || document.body.contains(sampleHeader);
 
-    console.log('[areHeadersValid] Sample header:', sampleHeader.id, 'isConnected:', isConnected);
+    //console.log('[areHeadersValid] Sample header:', sampleHeader.id, 'isConnected:', isConnected);
 
     return isConnected;
 }
@@ -109,9 +109,9 @@ function isDOMHeaderOrderCorrect(columnOrder) {
     const matches = JSON.stringify(expectedOrder) === JSON.stringify(actualOrder);
 
     if (!matches) {
-        console.log('[isDOMHeaderOrderCorrect] ⚠️ DOM order does NOT match expected!');
-        console.log('[isDOMHeaderOrderCorrect] Expected:', JSON.stringify(expectedOrder));
-        console.log('[isDOMHeaderOrderCorrect] Actual DOM:', JSON.stringify(actualOrder));
+        //console.log('[isDOMHeaderOrderCorrect] ⚠️ DOM order does NOT match expected!');
+        //console.log('[isDOMHeaderOrderCorrect] Expected:', JSON.stringify(expectedOrder));
+        //console.log('[isDOMHeaderOrderCorrect] Actual DOM:', JSON.stringify(actualOrder));
     }
 
     return matches;
@@ -122,9 +122,9 @@ function isDOMHeaderOrderCorrect(columnOrder) {
  * Call this when headers are known to be valid (after initial render)
  */
 function rebuildHeaderCache() {
-    console.log('[rebuildHeaderCache] ════════════════════════════════════════');
-    console.log('[rebuildHeaderCache] CALLED at', new Date().toLocaleTimeString());
-    console.trace('[rebuildHeaderCache] Stack trace:');
+    //console.log('[rebuildHeaderCache] ════════════════════════════════════════');
+    //console.log('[rebuildHeaderCache] CALLED at', new Date().toLocaleTimeString());
+    //console.trace('[rebuildHeaderCache] Stack trace:');
 
     const table = document.getElementById('positionsTable');
     if (!table) {
@@ -140,8 +140,8 @@ function rebuildHeaderCache() {
 
     // Capture current DOM order BEFORE clearing cache
     const currentDOMOrder = Array.from(headerRow.querySelectorAll('th')).map(th => th.id);
-    console.log('[rebuildHeaderCache] Current DOM header order:', JSON.stringify(currentDOMOrder));
-    console.log('[rebuildHeaderCache] Current state columnOrder:', JSON.stringify(getColumnOrder()));
+    //console.log('[rebuildHeaderCache] Current DOM header order:', JSON.stringify(currentDOMOrder));
+    //console.log('[rebuildHeaderCache] Current state columnOrder:', JSON.stringify(getColumnOrder()));
 
     // Clear existing cache
     cachedHeaders = {};
@@ -168,9 +168,9 @@ function rebuildHeaderCache() {
         });
     }
 
-    console.log('[rebuildHeaderCache] Header cache rebuilt, found', Object.keys(cachedHeaders).length, 'headers');
-    console.log('[rebuildHeaderCache] cachedHeaders keys:', JSON.stringify(Object.keys(cachedHeaders)));
-    console.log('[rebuildHeaderCache] ════════════════════════════════════════');
+    //console.log('[rebuildHeaderCache] Header cache rebuilt, found', Object.keys(cachedHeaders).length, 'headers');
+    //console.log('[rebuildHeaderCache] cachedHeaders keys:', JSON.stringify(Object.keys(cachedHeaders)));
+    //console.log('[rebuildHeaderCache] ════════════════════════════════════════');
 }
 
 /**
@@ -181,24 +181,15 @@ function hasColumnConfigChanged(columnOrder, visibleColumns) {
     const orderChanged = JSON.stringify(columnOrder) !== JSON.stringify(lastColumnOrder);
     const visibilityChanged = JSON.stringify(visibleColumns) !== JSON.stringify(lastVisibleColumns);
 
-    console.log('[hasColumnConfigChanged] DEBUG:', {
-        columnOrder: JSON.stringify(columnOrder),
-        lastColumnOrder: JSON.stringify(lastColumnOrder),
-        orderChanged,
-        visibleColumns: JSON.stringify(visibleColumns),
-        lastVisibleColumns: JSON.stringify(lastVisibleColumns),
-        visibilityChanged,
-        result: orderChanged || visibilityChanged
-    });
 
     return orderChanged || visibilityChanged;
 }
 
 function reorderTableHeadersAndFilters(columnOrder) {
-    console.log('[reorderTableHeadersAndFilters] ════════════════════════════════════════');
-    console.log('[reorderTableHeadersAndFilters] CALLED at', new Date().toLocaleTimeString());
-    console.log('[reorderTableHeadersAndFilters] columnOrder received:', JSON.stringify(columnOrder));
-    console.trace('[reorderTableHeadersAndFilters] Stack trace:');
+    //console.log('[reorderTableHeadersAndFilters] ════════════════════════════════════════');
+    //console.log('[reorderTableHeadersAndFilters] CALLED at', new Date().toLocaleTimeString());
+    //console.log('[reorderTableHeadersAndFilters] columnOrder received:', JSON.stringify(columnOrder));
+    //console.trace('[reorderTableHeadersAndFilters] Stack trace:');
 
     const table = document.getElementById('positionsTable');
     if (!table) {
@@ -213,10 +204,10 @@ function reorderTableHeadersAndFilters(columnOrder) {
     }
 
     const visibleColumns = getVisibleColumns();
-    console.log('[reorderTableHeadersAndFilters] visibleColumns:', JSON.stringify(visibleColumns));
-    console.log('[reorderTableHeadersAndFilters] cachedHeaders before:', cachedHeaders ? Object.keys(cachedHeaders).length : 'null');
+    //console.log('[reorderTableHeadersAndFilters] visibleColumns:', JSON.stringify(visibleColumns));
+    //console.log('[reorderTableHeadersAndFilters] cachedHeaders before:', cachedHeaders ? Object.keys(cachedHeaders).length : 'null');
     if (cachedHeaders) {
-        console.log('[reorderTableHeadersAndFilters] cachedHeaders keys:', JSON.stringify(Object.keys(cachedHeaders)));
+        //console.log('[reorderTableHeadersAndFilters] cachedHeaders keys:', JSON.stringify(Object.keys(cachedHeaders)));
     }
 
     // Check if we actually need to reorder (optimization)
@@ -224,46 +215,46 @@ function reorderTableHeadersAndFilters(columnOrder) {
     const configChanged = hasColumnConfigChanged(columnOrder, visibleColumns);
     const domOrderCorrect = isDOMHeaderOrderCorrect(columnOrder);
 
-    console.log('[reorderTableHeadersAndFilters] areHeadersValid():', headersValid);
-    console.log('[reorderTableHeadersAndFilters] hasColumnConfigChanged():', configChanged);
-    console.log('[reorderTableHeadersAndFilters] isDOMHeaderOrderCorrect():', domOrderCorrect);
+    //console.log('[reorderTableHeadersAndFilters] areHeadersValid():', headersValid);
+    //console.log('[reorderTableHeadersAndFilters] hasColumnConfigChanged():', configChanged);
+    //console.log('[reorderTableHeadersAndFilters] isDOMHeaderOrderCorrect():', domOrderCorrect);
 
     if (!configChanged && headersValid && domOrderCorrect) {
-        console.log('[reorderTableHeadersAndFilters] No changes needed, just reapplying widths');
-        console.log('[reorderTableHeadersAndFilters] getColumnWidths() before reapply:', JSON.stringify(getColumnWidths()));
+        //console.log('[reorderTableHeadersAndFilters] No changes needed, just reapplying widths');
+        //console.log('[reorderTableHeadersAndFilters] getColumnWidths() before reapply:', JSON.stringify(getColumnWidths()));
         // Just reapply widths, don't touch headers
         applyColumnWidths();
-        console.log('[reorderTableHeadersAndFilters] getColumnWidths() after reapply:', JSON.stringify(getColumnWidths()));
+        //console.log('[reorderTableHeadersAndFilters] getColumnWidths() after reapply:', JSON.stringify(getColumnWidths()));
         const columnWidth = getColumnWidth();
         applyColumnWidth(columnWidth);
         return;
     }
 
     if (!domOrderCorrect) {
-        console.log('[reorderTableHeadersAndFilters] DOM order mismatch detected - forcing reorder');
+        //console.log('[reorderTableHeadersAndFilters] DOM order mismatch detected - forcing reorder');
     }
 
     // Update tracking
-    console.log('[reorderTableHeadersAndFilters] Updating lastColumnOrder from:', JSON.stringify(lastColumnOrder), 'to:', JSON.stringify(columnOrder));
+    //console.log('[reorderTableHeadersAndFilters] Updating lastColumnOrder from:', JSON.stringify(lastColumnOrder), 'to:', JSON.stringify(columnOrder));
     lastColumnOrder = [...(columnOrder || [])];
     lastVisibleColumns = [...(visibleColumns || [])];
 
     // Check if cached headers are still valid (attached to DOM)
     if (!headersValid) {
-        console.log('[reorderTableHeadersAndFilters] Cache INVALID - rebuilding from DOM');
-        console.log('[reorderTableHeadersAndFilters] Current DOM header order BEFORE rebuild:');
+        //console.log('[reorderTableHeadersAndFilters] Cache INVALID - rebuilding from DOM');
+        //console.log('[reorderTableHeadersAndFilters] Current DOM header order BEFORE rebuild:');
         const table = document.getElementById('positionsTable');
         if (table) {
             const currentHeaders = Array.from(table.querySelectorAll('thead tr th'));
-            console.log('[reorderTableHeadersAndFilters]   DOM headers:', JSON.stringify(currentHeaders.map(h => h.id)));
+            //console.log('[reorderTableHeadersAndFilters]   DOM headers:', JSON.stringify(currentHeaders.map(h => h.id)));
         }
         rebuildHeaderCache();
-        console.log('[reorderTableHeadersAndFilters] cachedHeaders after rebuild:', cachedHeaders ? Object.keys(cachedHeaders).length : 'null');
+        //console.log('[reorderTableHeadersAndFilters] cachedHeaders after rebuild:', cachedHeaders ? Object.keys(cachedHeaders).length : 'null');
         if (cachedHeaders) {
-            console.log('[reorderTableHeadersAndFilters] cachedHeaders keys after rebuild:', JSON.stringify(Object.keys(cachedHeaders)));
+            //console.log('[reorderTableHeadersAndFilters] cachedHeaders keys after rebuild:', JSON.stringify(Object.keys(cachedHeaders)));
         }
     } else {
-        console.log('[reorderTableHeadersAndFilters] Cache is valid');
+        //console.log('[reorderTableHeadersAndFilters] Cache is valid');
     }
 
     // Initialize cache from DOM if still not present
@@ -338,24 +329,24 @@ function reorderTableHeadersAndFilters(columnOrder) {
     });
 
     // Clear and append in single batch operation
-    console.log('[reorderTableHeadersAndFilters] ⚠️ CLEARING headerRow.innerHTML');
+    //console.log('[reorderTableHeadersAndFilters] ⚠️ CLEARING headerRow.innerHTML');
     headerRow.innerHTML = '';
-    console.log('[reorderTableHeadersAndFilters] Appending headerFragment');
+    //console.log('[reorderTableHeadersAndFilters] Appending headerFragment');
     headerRow.appendChild(headerFragment);
     if (filterRow) {
-        console.log('[reorderTableHeadersAndFilters] ⚠️ CLEARING filterRow.innerHTML');
+        //console.log('[reorderTableHeadersAndFilters] ⚠️ CLEARING filterRow.innerHTML');
         filterRow.innerHTML = '';
         filterRow.appendChild(filterFragment);
     }
 
     // IMPORTANT: Also reorder the data cells (td) in tbody to match headers
     // This ensures data stays aligned with headers after drag-and-drop
-    console.log('[reorderTableHeadersAndFilters] Reordering data cells in tbody...');
-    console.log('[reorderTableHeadersAndFilters] columnOrder for cell reorder:', JSON.stringify(columnOrder));
+    //console.log('[reorderTableHeadersAndFilters] Reordering data cells in tbody...');
+    //console.log('[reorderTableHeadersAndFilters] columnOrder for cell reorder:', JSON.stringify(columnOrder));
     const tbody = table.querySelector('tbody');
     if (tbody) {
         const rows = tbody.querySelectorAll('tr');
-        console.log('[reorderTableHeadersAndFilters] Found', rows.length, 'rows in tbody');
+        //console.log('[reorderTableHeadersAndFilters] Found', rows.length, 'rows in tbody');
 
         // FIX: Skip cell reordering if no data rows exist yet.
         // The rowRenderer in finalizeTableRender already generates cells in the correct
@@ -369,22 +360,22 @@ function reorderTableHeadersAndFilters(columnOrder) {
         );
 
         if (!hasDataRows) {
-            console.log('[reorderTableHeadersAndFilters] No data rows found yet. Skipping cell reorder - rowRenderer will handle ordering during generation.');
+            //console.log('[reorderTableHeadersAndFilters] No data rows found yet. Skipping cell reorder - rowRenderer will handle ordering during generation.');
         } else {
             // Only reorder cells if data rows exist
             rows.forEach((row, rowIndex) => {
                 // SKIP virtual scroll spacer rows - they have only 1 cell with colspan
                 if (row.classList.contains('vs-top-spacer') || row.classList.contains('vs-bottom-spacer')) {
-                    console.log('[reorderTableHeadersAndFilters] Skipping spacer row', rowIndex);
+                    //console.log('[reorderTableHeadersAndFilters] Skipping spacer row', rowIndex);
                     return;
                 }
 
                 const cells = Array.from(row.querySelectorAll('td'));
                 if (cells.length === 0) {
-                    console.log('[reorderTableHeadersAndFilters] Row', rowIndex, 'has no cells, skipping');
+                    //console.log('[reorderTableHeadersAndFilters] Row', rowIndex, 'has no cells, skipping');
                     return; // Skip empty rows - rowRenderer hasn't populated them yet
                 }
-                console.log('[reorderTableHeadersAndFilters] Row', rowIndex, 'has', cells.length, 'cells');
+                //console.log('[reorderTableHeadersAndFilters] Row', rowIndex, 'has', cells.length, 'cells');
 
                 // Create a map of colKey to cell based on cell class
                 const cellMap = new Map();
@@ -406,7 +397,7 @@ function reorderTableHeadersAndFilters(columnOrder) {
                     return;
                 }
 
-                console.log('[reorderTableHeadersAndFilters] Row', rowIndex, 'reordering', orderToUse.length, 'of', columnOrder.length, 'columns');
+                //console.log('[reorderTableHeadersAndFilters] Row', rowIndex, 'reordering', orderToUse.length, 'of', columnOrder.length, 'columns');
 
                 // Create fragment with cells in new order
                 const cellFragment = document.createDocumentFragment();
@@ -419,7 +410,7 @@ function reorderTableHeadersAndFilters(columnOrder) {
                     }
                 });
 
-                console.log('[reorderTableHeadersAndFilters] Reordered', cellsReordered, 'cells for row', rowIndex);
+                //console.log('[reorderTableHeadersAndFilters] Reordered', cellsReordered, 'cells for row', rowIndex);
 
                 // Clear row and append cells in new order (only for available cells)
                 if (cellsReordered > 0) {
@@ -437,7 +428,7 @@ function reorderTableHeadersAndFilters(columnOrder) {
                     extraCells.forEach(cell => row.appendChild(cell));
                 }
             });
-            console.log('[reorderTableHeadersAndFilters] ✓ Finished reordering cells for all rows');
+            //console.log('[reorderTableHeadersAndFilters] ✓ Finished reordering cells for all rows');
         } // Close hasDataRows else block
     } else {
         console.warn('[reorderTableHeadersAndFilters] tbody not found!');
@@ -446,28 +437,28 @@ function reorderTableHeadersAndFilters(columnOrder) {
     // Update cache with the new ordered references
     cachedHeaders = newCachedHeaders;
     cachedFilterHeaders = newCachedFilterHeaders;
-    console.log('[reorderTableHeadersAndFilters] Cache updated - headers:', Object.keys(cachedHeaders).length);
+    //console.log('[reorderTableHeadersAndFilters] Cache updated - headers:', Object.keys(cachedHeaders).length);
 
     // DEBUG: Log final header order in DOM
     const finalTable = document.getElementById('positionsTable');
     if (finalTable) {
         const finalHeaders = Array.from(finalTable.querySelectorAll('thead tr th'));
-        console.log('[reorderTableHeadersAndFilters] Final DOM header order:', JSON.stringify(finalHeaders.map(h => h.id)));
+        //console.log('[reorderTableHeadersAndFilters] Final DOM header order:', JSON.stringify(finalHeaders.map(h => h.id)));
     }
 
     // IMPORTANT: Always reapply column widths after reordering
     // Column widths are lost when innerHTML is cleared
-    console.log('[reorderTableHeadersAndFilters] Reapplying column widths...');
-    console.log('[reorderTableHeadersAndFilters] getColumnWidths() BEFORE applyColumnWidths:', JSON.stringify(getColumnWidths()));
+    //console.log('[reorderTableHeadersAndFilters] Reapplying column widths...');
+    //console.log('[reorderTableHeadersAndFilters] getColumnWidths() BEFORE applyColumnWidths:', JSON.stringify(getColumnWidths()));
     applyColumnWidths();
-    console.log('[reorderTableHeadersAndFilters] getColumnWidths() AFTER applyColumnWidths:', JSON.stringify(getColumnWidths()));
+    //console.log('[reorderTableHeadersAndFilters] getColumnWidths() AFTER applyColumnWidths:', JSON.stringify(getColumnWidths()));
 
     // Also apply the CSS column width variable
     const columnWidth = getColumnWidth();
     applyColumnWidth(columnWidth);
 
-    console.log('[reorderTableHeadersAndFilters] ✓ DONE - Headers reordered, widths reapplied');
-    console.log('[reorderTableHeadersAndFilters] ════════════════════════════════════════');
+    //console.log('[reorderTableHeadersAndFilters] ✓ DONE - Headers reordered, widths reapplied');
+    //console.log('[reorderTableHeadersAndFilters] ════════════════════════════════════════');
 }
 
 export function updateStats(showSymbols, allRows) {
@@ -567,15 +558,15 @@ function _renderTableInternal() {
     // ═══════════════════════════════════════════════════════════
     // PERSISTENCE DEBUG: Render Application
     // ═══════════════════════════════════════════════════════════
-    console.log(`%c[PERSISTENCE:RENDER] ═══ RENDER STARTED ═══`, 'background: #9C27B0; color: white; font-weight: bold; font-size: 12px;');
-    console.log(`%c[PERSISTENCE:RENDER] Time:`, 'color: #9C27B0;', now);
-    console.log(`%c[PERSISTENCE:RENDER] Caller:`, 'color: #9C27B0;', lastRenderCaller);
+    //console.log(`%c[PERSISTENCE:RENDER] ═══ RENDER STARTED ═══`, 'background: #9C27B0; color: white; font-weight: bold; font-size: 12px;');
+    //console.log(`%c[PERSISTENCE:RENDER] Time:`, 'color: #9C27B0;', now);
+    //console.log(`%c[PERSISTENCE:RENDER] Caller:`, 'color: #9C27B0;', lastRenderCaller);
 
     // Log current state values for persistence debugging
     const currentColumnWidths = getColumnWidths();
     const currentColumnOrder = getColumnOrder();
-    console.log(`%c[PERSISTENCE:RENDER] columnWidths from state:`, 'color: #9C27B0; font-weight: bold;', JSON.stringify(currentColumnWidths, null, 2));
-    console.log(`%c[PERSISTENCE:RENDER] columnOrder from state:`, 'color: #9C27B0; font-weight: bold;', JSON.stringify(currentColumnOrder, null, 2));
+    //console.log(`%c[PERSISTENCE:RENDER] columnWidths from state:`, 'color: #9C27B0; font-weight: bold;', JSON.stringify(currentColumnWidths, null, 2));
+    //console.log(`%c[PERSISTENCE:RENDER] columnOrder from state:`, 'color: #9C27B0; font-weight: bold;', JSON.stringify(currentColumnOrder, null, 2));
 
     function renderCharts() {
         renderScatterPlot();
@@ -583,9 +574,9 @@ function _renderTableInternal() {
     }
     const allRows = getAllRows();
     const whaleMeta = getWhaleMeta();
-    console.log('[renderTable] allRows count:', allRows.length);
+    //console.log('[renderTable] allRows count:', allRows.length);
     const selectedCoins = getSelectedCoins();
-    console.log('renderTable: selectedCoins:', selectedCoins);
+    //console.log('renderTable: selectedCoins:', selectedCoins);
     const activeCurrency = getActiveCurrency();
     const activeEntryCurrency = getActiveEntryCurrency();
     const showSymbols = getShowSymbols();
@@ -593,16 +584,16 @@ function _renderTableInternal() {
     const sortDir = getSortDir();
     const visibleColumns = getVisibleColumns();
     const columnOrder = getColumnOrder();
-    console.log('[renderTable] columnOrder from state:', JSON.stringify(columnOrder));
-    console.log('[renderTable] columnWidths from state:', JSON.stringify(getColumnWidths()));
+    //console.log('[renderTable] columnOrder from state:', JSON.stringify(columnOrder));
+    //console.log('[renderTable] columnWidths from state:', JSON.stringify(getColumnWidths()));
     const currentPrices = getCurrentPrices();
     const fxRates = getFxRates();
     const decimalPlaces = getDecimalPlaces();
 
     // Reorder table headers first
-    console.log(`%c[PERSISTENCE:RENDER] Calling reorderTableHeadersAndFilters()...`, 'color: #9C27B0;');
+    //console.log(`%c[PERSISTENCE:RENDER] Calling reorderTableHeadersAndFilters()...`, 'color: #9C27B0;');
     reorderTableHeadersAndFilters(columnOrder);
-    console.log(`%c[PERSISTENCE:RENDER] reorderTableHeadersAndFilters() completed`, 'color: #9C27B0;');
+    //console.log(`%c[PERSISTENCE:RENDER] reorderTableHeadersAndFilters() completed`, 'color: #9C27B0;');
 
     const sideFilter = document.getElementById('sideFilter').value;
     const addressFilter = document.getElementById('addressFilter').value.trim().toLowerCase();
@@ -632,14 +623,14 @@ function _renderTableInternal() {
     let rows;
     if (filterCache.has(cacheKey)) {
         rows = filterCache.get(cacheKey);
-        console.log('Using cached filtered rows:', rows.length);
+        //console.log('Using cached filtered rows:', rows.length);
         finalizeTableRender(rows, showSymbols);
     } else {
         if (dataWorker) {
             // Use Web Worker for heavy lifting
             dataWorker.onmessage = function (e) {
                 const { rows: processedRows, stats } = e.data;
-                console.log(`[Table] Worker returned ${processedRows.length} rows and stats.`);
+                //console.log(`[Table] Worker returned ${processedRows.length} rows and stats.`);
 
                 filterCache.set(cacheKey, processedRows);
 
@@ -1001,9 +992,9 @@ function _renderTableInternal() {
         renderAggregationTableResumida(true);
 
         // Apply column widths after table is rendered
-        //console.log(`% c[PERSISTENCE:RENDER] Calling applyColumnWidths()...`, 'color: #9C27B0;');
+        ////console.log(`% c[PERSISTENCE:RENDER] Calling applyColumnWidths()...`, 'color: #9C27B0;');
         applyColumnWidths();
-        //console.log(`% c[PERSISTENCE:RENDER]applyColumnWidths() completed`, 'color: #9C27B0;');
+        ////console.log(`% c[PERSISTENCE:RENDER]applyColumnWidths() completed`, 'color: #9C27B0;');
 
         // Also apply the default column width (CSS variable)
         const columnWidth = getColumnWidth();
@@ -1018,13 +1009,13 @@ function _renderTableInternal() {
 
         // Always try to setup drag and drop - the function has its own guards
         // The setupColumnDragAndDrop function uses a module-level flag that resets on page reload
-        console.log('%c[RENDER:TABLE] Scheduling setupColumnDragAndDrop...', 'background: #FF5722; color: white; font-weight: bold;');
+        //console.log('%c[RENDER:TABLE] Scheduling setupColumnDragAndDrop...', 'background: #FF5722; color: white; font-weight: bold;');
         setTimeout(() => {
-            console.log('%c[RENDER:TABLE] Calling setupColumnDragAndDrop from setTimeout', 'background: #FF5722; color: white; font-weight: bold;');
+            //console.log('%c[RENDER:TABLE] Calling setupColumnDragAndDrop from setTimeout', 'background: #FF5722; color: white; font-weight: bold;');
             setupColumnDragAndDrop();
         }, 100);
 
-        console.log(`% c[PERSISTENCE:RENDER] ✓ RENDER COMPLETED`, 'background: #9C27B0; color: white; font-weight: bold;');
+        //console.log(`% c[PERSISTENCE:RENDER] ✓ RENDER COMPLETED`, 'background: #9C27B0; color: white; font-weight: bold;');
     }
 }
 
@@ -1038,7 +1029,7 @@ export function renderTable() {
     } catch (e) {
         lastRenderCaller = 'unknown';
     }
-    console.log('[renderTable] Public renderTable called from:', lastRenderCaller);
+    //console.log('[renderTable] Public renderTable called from:', lastRenderCaller);
     debouncedRenderTable();
 }
 
@@ -1052,7 +1043,7 @@ export function renderTableImmediate() {
     } catch (e) {
         lastRenderCaller = 'unknown (immediate)';
     }
-    console.log('[renderTableImmediate] Called from:', lastRenderCaller);
+    //console.log('[renderTableImmediate] Called from:', lastRenderCaller);
     _renderTableInternal();
 }
 
@@ -1070,9 +1061,9 @@ export function rebuildTableHeaderCache() {
  * This preserves column widths, order, and user customizations
  */
 export function updateTableDataOnly() {
-    console.log('[updateTableDataOnly] ════════════════════════════════════════');
-    console.log('[updateTableDataOnly] CALLED at', new Date().toLocaleTimeString());
-    console.trace('[updateTableDataOnly] Stack trace:');
+    //console.log('[updateTableDataOnly] ════════════════════════════════════════');
+    //console.log('[updateTableDataOnly] CALLED at', new Date().toLocaleTimeString());
+    //console.trace('[updateTableDataOnly] Stack trace:');
 
     const allRows = getAllRows();
     const currentPrices = getCurrentPrices();
@@ -1086,12 +1077,12 @@ export function updateTableDataOnly() {
     const columnOrder = getColumnOrder();
     const displayedRows = getDisplayedRows();
 
-    console.log('[updateTableDataOnly] columnOrder from state:', JSON.stringify(columnOrder));
-    console.log('[updateTableDataOnly] lastColumnOrder tracking:', JSON.stringify(lastColumnOrder));
+    //console.log('[updateTableDataOnly] columnOrder from state:', JSON.stringify(columnOrder));
+    //console.log('[updateTableDataOnly] lastColumnOrder tracking:', JSON.stringify(lastColumnOrder));
 
     // Get current displayed rows from state
     if (!displayedRows || displayedRows.length === 0) {
-        console.log('[updateTableDataOnly] No displayed rows, doing full render');
+        //console.log('[updateTableDataOnly] No displayed rows, doing full render');
         _renderTableInternal();
         return;
     }
@@ -1105,17 +1096,17 @@ export function updateTableDataOnly() {
     // Validate headers are still attached to DOM
     const headersValid = areHeadersValid();
     const domOrderCorrect = isDOMHeaderOrderCorrect(columnOrder);
-    console.log('[updateTableDataOnly] areHeadersValid():', headersValid);
-    console.log('[updateTableDataOnly] isDOMHeaderOrderCorrect():', domOrderCorrect);
+    //console.log('[updateTableDataOnly] areHeadersValid():', headersValid);
+    //console.log('[updateTableDataOnly] isDOMHeaderOrderCorrect():', domOrderCorrect);
 
     if (!headersValid) {
-        console.log('[updateTableDataOnly] Headers detached, doing full render');
+        //console.log('[updateTableDataOnly] Headers detached, doing full render');
         _renderTableInternal();
         return;
     }
 
     if (!domOrderCorrect) {
-        console.log('[updateTableDataOnly] DOM order incorrect - headers were reset!');
+        //console.log('[updateTableDataOnly] DOM order incorrect - headers were reset!');
     }
 
     const table = document.getElementById('positionsTable');
@@ -1275,7 +1266,7 @@ export function updateTableDataOnly() {
         console.error('Aggregation table update error (non-fatal):', err);
     }
 
-    console.log('[updateTableDataOnly] Table data updated, headers preserved');
+    //console.log('[updateTableDataOnly] Table data updated, headers preserved');
 }
 
 /**
@@ -1463,7 +1454,7 @@ export function updateTablePriceData() {
  * Call this from browser console: diagnoseColumnState()
  */
 export async function diagnoseColumnState() {
-    console.log('%c[DIAGNOSE] ════════════════════════════════════════════════════════════', 'background: #9C27B0; color: white; font-size: 14px; font-weight: bold;');
+    //console.log('%c[DIAGNOSE] ════════════════════════════════════════════════════════════', 'background: #9C27B0; color: white; font-size: 14px; font-weight: bold;');
 
     // Import state getters dynamically to avoid circular dependency issues
     const state = await import('../state.js');
@@ -1472,31 +1463,31 @@ export async function diagnoseColumnState() {
     const columnWidths = state.getColumnWidths ? state.getColumnWidths() : {};
     const visibleColumns = state.getVisibleColumns ? state.getVisibleColumns() : [];
 
-    console.log('%cColumn Order:', 'font-weight: bold; color: #2196F3;', columnOrder);
-    console.log('%cVisible Columns:', 'font-weight: bold; color: #2196F3;', visibleColumns);
-    console.log('%cColumn Widths:', 'font-weight: bold; color: #2196F3;', columnWidths);
+    //console.log('%cColumn Order:', 'font-weight: bold; color: #2196F3;', columnOrder);
+    //console.log('%cVisible Columns:', 'font-weight: bold; color: #2196F3;', visibleColumns);
+    //console.log('%cColumn Widths:', 'font-weight: bold; color: #2196F3;', columnWidths);
 
     // Check cached headers
-    console.log('%cCached Headers:', 'font-weight: bold; color: #FF9800;');
+    //console.log('%cCached Headers:', 'font-weight: bold; color: #FF9800;');
     if (cachedHeaders) {
         const headerKeys = Object.keys(cachedHeaders);
-        console.log('  - Count:', headerKeys.length);
+        //console.log('  - Count:', headerKeys.length);
         headerKeys.forEach(key => {
             const th = cachedHeaders[key];
             const isConnected = th.isConnected || document.body.contains(th);
             const width = th.style.width;
-            console.log(`  - ${key}: inDOM = ${isConnected}, width = ${width} `);
+            //console.log(`  - ${key}: inDOM = ${isConnected}, width = ${width} `);
         });
     } else {
-        console.log('  - cachedHeaders is NULL');
+        //console.log('  - cachedHeaders is NULL');
     }
 
     // Check cached filter headers
-    console.log('%cCached Filter Headers:', 'font-weight: bold; color: #FF9800;');
+    //console.log('%cCached Filter Headers:', 'font-weight: bold; color: #FF9800;');
     if (cachedFilterHeaders) {
-        console.log('  - Count:', Object.keys(cachedFilterHeaders).length);
+        //console.log('  - Count:', Object.keys(cachedFilterHeaders).length);
     } else {
-        console.log('  - cachedFilterHeaders is NULL');
+        //console.log('  - cachedFilterHeaders is NULL');
     }
 
     // Check DOM headers
@@ -1505,32 +1496,32 @@ export async function diagnoseColumnState() {
         const headerRow = table.querySelector('thead tr');
         if (headerRow) {
             const domHeaders = Array.from(headerRow.querySelectorAll('th'));
-            console.log('%cDOM Headers:', 'font-weight: bold; color: #4CAF50;', domHeaders.length);
+            //console.log('%cDOM Headers:', 'font-weight: bold; color: #4CAF50;', domHeaders.length);
             domHeaders.forEach((th, i) => {
                 const id = th.id || 'no-id';
                 const width = th.style.width;
                 const rect = th.getBoundingClientRect();
-                console.log(`  [${i}] ${id}: width = ${width}, actual = ${rect.width.toFixed(1)} px`);
+                //console.log(`  [${i}] ${id}: width = ${width}, actual = ${rect.width.toFixed(1)} px`);
             });
         } else {
-            console.log('%cDOM Headers: Header row not found!', 'color: red;');
+            //console.log('%cDOM Headers: Header row not found!', 'color: red;');
         }
     } else {
-        console.log('%cDOM Headers: Table not found!', 'color: red;');
+        //console.log('%cDOM Headers: Table not found!', 'color: red;');
     }
 
     // Last render info
-    console.log('%cLast Render:', 'font-weight: bold; color: #E91E63;');
-    console.log('  - Caller:', lastRenderCaller);
-    console.log('  - Timestamp:', lastRenderTimestamp ? new Date(lastRenderTimestamp).toLocaleTimeString() : 'never');
-    console.log('  - Seconds ago:', lastRenderTimestamp ? ((Date.now() - lastRenderTimestamp) / 1000).toFixed(1) : 'N/A');
+    //console.log('%cLast Render:', 'font-weight: bold; color: #E91E63;');
+    //console.log('  - Caller:', lastRenderCaller);
+    //console.log('  - Timestamp:', lastRenderTimestamp ? new Date(lastRenderTimestamp).toLocaleTimeString() : 'never');
+    //console.log('  - Seconds ago:', lastRenderTimestamp ? ((Date.now() - lastRenderTimestamp) / 1000).toFixed(1) : 'N/A');
 
     // Tracking variables
-    console.log('%cTracking Variables:', 'font-weight: bold; color: #607D8B;');
-    console.log('  - lastColumnOrder:', lastColumnOrder);
-    console.log('  - lastVisibleColumns:', lastVisibleColumns);
+    //console.log('%cTracking Variables:', 'font-weight: bold; color: #607D8B;');
+    //console.log('  - lastColumnOrder:', lastColumnOrder);
+    //console.log('  - lastVisibleColumns:', lastVisibleColumns);
 
-    console.log('%c[DIAGNOSE] ════════════════════════════════════════════════════════════', 'background: #9C27B0; color: white; font-size: 14px; font-weight: bold;');
+    //console.log('%c[DIAGNOSE] ════════════════════════════════════════════════════════════', 'background: #9C27B0; color: white; font-size: 14px; font-weight: bold;');
 
     return {
         columnOrder,

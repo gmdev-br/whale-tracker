@@ -270,11 +270,11 @@ export async function streamPositions(whaleList, minVal, maxConcurrency, callbac
             // IMPORTANT: During scanning, use updateTableDataOnly to preserve column widths/order
             // Only do full renderTable on first scan render or when not scanning
             if (getScanning() && !isFirstScanRender && updateTableDataOnly) {
-                console.log('[scanning] Using updateTableDataOnly to preserve column state');
+                //console.log('[scanning] Using updateTableDataOnly to preserve column state');
                 updateTableDataOnly();
             } else {
                 if (isFirstScanRender) {
-                    console.log('[scanning] First render, using full renderTable');
+                    //console.log('[scanning] First render, using full renderTable');
                     isFirstScanRender = false;
                 }
                 renderTable();
