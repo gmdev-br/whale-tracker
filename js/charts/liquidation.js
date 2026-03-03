@@ -141,12 +141,19 @@ function enableChartScaleResizing(canvasId, getChartInstance, resetBtnId) {
     });
 }
 
-export function renderLiqScatterPlot() {
-    const section = document.getElementById('liq-chart-section');
+export function renderLiqScatterPlot(force = false) {
+    const section = document.getElementById('liquidationChartWrapper');
     if (!section) return;
 
-    const displayedRows = getDisplayedRows();
-    if (!displayedRows || displayedRows.length === 0) {
+    if (section && section.classList.contains('collapsed') && !force) {
+        // Flag for future refresh when opened
+        section.dataset.dirty = 'true';
+        return;
+    }
+    delete section?.dataset.dirty;
+
+    const rows = getDisplayedRows();
+    if (!rows || rows.length === 0) {
         if (section.style.display !== 'none') section.style.display = 'none';
         return;
     }
@@ -161,25 +168,42 @@ export function renderLiqScatterPlot() {
     const ctx = canvas.getContext('2d');
 
     const bubbleScale = getBubbleScale();
-    const data = displayedRows.map(r => {
-        if (r._liqPxCcy <= 0) return null;
-        return {
-            x: r._liqPxCcy,
+    const activeEntryCcy = getActiveEntryCurrency();
+    const chartMode = getChartMode();
+    const highLevSplit = getChartHighLevSplit();
+    const btcPrice = parseFloat(getCurrentPrices()['BTC'] || 0);
+    const fxRates = getFxRates();
+    const rate = fxRates[activeEntryCcy] || 1;
+    let refPrice = activeEntryCcy === 'BTC' ? 1 : btcPrice * rate;
+
+    // PERFORMANCE: Single-pass data preparation
+    const data = [];
+    let minX = refPrice;
+    let maxX = refPrice;
+
+    for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (r._liqPxCcy <= 0) continue;
+
+        const x = r._liqPxCcy;
+        const d = {
+            x: x,
             y: r._volBTC,
             r: r._sqrtPosVal / 1000 * bubbleScale,
             _raw: r
         };
-    }).filter(d => d !== null);
+        data.push(d);
+
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+    }
 
     if (data.length === 0) {
         section.style.display = 'none';
         return;
     }
 
-    const activeEntryCcy = getActiveEntryCurrency();
-    const chartMode = getChartMode();
-    const highLevSplit = getChartHighLevSplit();
-    const currentDataHash = `${displayedRows.length}|${chartMode}|${highLevSplit}|${bubbleScale}|${getBubbleOpacity()}|${getAggregationFactor()}|${activeEntryCcy}|${getPriceUpdateVersion()}`;
+    const currentDataHash = `${rows.length}|${chartMode}|${highLevSplit}|${bubbleScale}|${getBubbleOpacity()}|${getAggregationFactor()}|${activeEntryCcy}|${getPriceUpdateVersion()}`;
 
     if (liqChartInstance && lastDataHash === currentDataHash) {
         return;
@@ -191,11 +215,6 @@ export function renderLiqScatterPlot() {
 
     lastDataHash = currentDataHash;
 
-    const btcPrice = parseFloat(getCurrentPrices()['BTC'] || 0);
-    const fxRates = getFxRates();
-    const rate = fxRates[activeEntryCcy] || 1;
-    let refPrice = activeEntryCcy === 'BTC' ? 1 : btcPrice * rate;
-
     const customColors = getLeverageColors();
     const opacity = getBubbleOpacity();
 
@@ -206,9 +225,6 @@ export function renderLiqScatterPlot() {
 
     if (chartMode === 'column') {
         chartType = 'bar';
-        const xValues = data.map(d => d.x);
-        const minX = xValues.reduce((min, val) => Math.min(min, val), refPrice);
-        const maxX = xValues.reduce((max, val) => Math.max(max, val), refPrice);
         const numBins = getAggregationFactor();
         const binSize = (maxX - minX || 1) / numBins;
         const bins = new Array(numBins).fill(0);
@@ -223,21 +239,35 @@ export function renderLiqScatterPlot() {
     } else if (chartMode === 'lines') {
         chartType = 'bar';
         localIndexAxis = 'y';
-        datasets = data.map(d => {
+
+        const groupedData = {
+            longLow: { label: `Longs (≤${highLevSplit}x)`, data: [], backgroundColor: hexToRgba(customColors.longLow, 0.7), borderColor: customColors.longLow },
+            longHigh: { label: `Longs (>${highLevSplit}x)`, data: [], backgroundColor: hexToRgba(customColors.longHigh, 0.7), borderColor: customColors.longHigh },
+            shortLow: { label: `Shorts (≤${highLevSplit}x)`, data: [], backgroundColor: hexToRgba(customColors.shortLow, 0.7), borderColor: customColors.shortLow },
+            shortHigh: { label: `Shorts (>${highLevSplit}x)`, data: [], backgroundColor: hexToRgba(customColors.shortHigh, 0.7), borderColor: customColors.shortHigh }
+        };
+
+        let maxVol = 0;
+        for (let i = 0; i < data.length; i++) {
+            const d = data[i];
             const r = d._raw;
             const lev = Math.abs(r.leverageValue);
-            const color = r.side === 'long' ? (lev >= highLevSplit ? customColors.longHigh : customColors.longLow) : (lev >= highLevSplit ? customColors.shortHigh : customColors.shortLow);
-            return {
-                label: `${r.coin} ${r.side === 'long' ? 'Long' : 'Short'} @ ${d.x}`,
-                data: [{ x: d.y, y: d.x }],
-                backgroundColor: hexToRgba(color, 0.7),
-                borderColor: color,
+            const key = r.side === 'long' ? (lev >= highLevSplit ? 'longHigh' : 'longLow') : (lev >= highLevSplit ? 'shortHigh' : 'shortLow');
+            groupedData[key].data.push({ x: d.y, y: d.x, _raw: r });
+            if (d.y > maxVol) maxVol = d.y;
+        }
+
+        datasets = Object.values(groupedData)
+            .filter(g => g.data.length > 0)
+            .map(g => ({
+                ...g,
                 borderWidth: 1,
                 barThickness: 2,
-                _raw: r
-            };
-        });
-        const maxVol = data.reduce((max, d) => Math.max(max, d.y), 0);
+                grouped: true,
+                categoryPercentage: 1.0,
+                barPercentage: 1.0
+            }));
+
         localScales = {
             x: { type: 'linear', position: 'bottom', stacked: true, min: 0, max: maxVol * 1.1 },
             y: { type: 'linear', stacked: true, min: parseFloat(document.getElementById('minEntryCcy')?.value || undefined) }

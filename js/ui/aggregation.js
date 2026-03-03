@@ -60,17 +60,25 @@ const tableState = {
 
 /**
  * Computes a lightweight hash of the prices for coins with active positions.
- * Used to detect real price changes without forcing a full re-render every tick.
+ * Optimized with a coin cache to avoid iterating through all rows every time.
  */
+let _activeCoinCache = null;
+let _lastRowsForCache = null;
+
 function computeRelevantPricesHash(currentPrices, rows) {
-    const activeCoins = new Set();
-    for (const r of rows) {
-        if (r.coin) activeCoins.add(r.coin);
+    if (_activeCoinCache === null || _lastRowsForCache !== rows) {
+        _activeCoinCache = new Set();
+        for (let i = 0; i < rows.length; i++) {
+            if (rows[i].coin) _activeCoinCache.add(rows[i].coin);
+        }
+        _activeCoinCache.add('BTC');
+        _lastRowsForCache = rows;
     }
-    activeCoins.add('BTC');
 
     let hash = '';
-    for (const coin of [...activeCoins].sort()) {
+    const sortedCoins = Array.from(_activeCoinCache).sort();
+    for (let i = 0; i < sortedCoins.length; i++) {
+        const coin = sortedCoins[i];
         const price = currentPrices[coin];
         if (price != null) hash += `${coin}:${parseFloat(price).toFixed(2)}|`;
     }
@@ -113,9 +121,10 @@ function hexToRgb(hex) {
  * @param {Object} options - Configuration options
  * @param {boolean} options.isResumida - Whether this is the "Resumida" table
  * @param {boolean} options.force - Force re-render regardless of cache
+ * @param {Object} options.workerData - Pre-calculated bands and stats from worker
  */
 function renderAggregationTableBase(options = {}) {
-    const { isResumida = false, force = false } = options;
+    const { isResumida = false, force = false, workerData = null } = options;
     const suffix = isResumida ? 'Resumida' : '';
     const state = isResumida ? tableState.resumida : tableState.main;
 
@@ -184,32 +193,37 @@ function renderAggregationTableBase(options = {}) {
     state.lastRenderedColorsStr = colorsStr;
     state.lastRenderedPricesHash = pricesHash;
 
-    // Build bands
-    const { bands, totalLongNotional, totalShortNotional, bandsWithPosCount } = buildBands(
-        rows, currentPrices, fxRates, activeEntryCurrency, bandSize,
-        isResumida ? getLiquidationMinPriceSummary() : getLiquidationMinPriceFull(),
-        isResumida ? getLiquidationMaxPriceSummary() : getLiquidationMaxPriceFull(),
-        currentBand
-    );
+    // Build or Use Worker bands
+    let bandArray;
+    let totalLongNotional, totalShortNotional, bandsWithPosCount;
 
-    // Convert bands to array and sort descending
-    let bandArray = Object.values(bands).sort((a, b) => b.faixaDe - a.faixaDe);
+    if (workerData) {
+        bandArray = workerData.bandArray;
+        totalLongNotional = workerData.totalLongNotional;
+        totalShortNotional = workerData.totalShortNotional;
+        bandsWithPosCount = workerData.bandsWithPosCount;
+    } else {
+        // Fallback for manual updates or missing worker data
+        const { bands, totalLongNotional: tl, totalShortNotional: ts, bandsWithPosCount: bc } = buildBands(
+            rows, currentPrices, fxRates, activeEntryCurrency, bandSize,
+            isResumida ? getLiquidationMinPriceSummary() : getLiquidationMinPriceFull(),
+            isResumida ? getLiquidationMaxPriceSummary() : getLiquidationMaxPriceFull(),
+            currentBand
+        );
+        bandArray = Object.values(bands).sort((a, b) => b.faixaDe - a.faixaDe);
+        totalLongNotional = tl;
+        totalShortNotional = ts;
+        bandsWithPosCount = bc;
 
-    // Filtro para tabela resumida: mostrar apenas pontos destacados
-    if (isResumida) {
-        bandArray = bandArray.filter(b => {
-            // Remove vácuos
-            if (b.isEmpty) return false;
-
-            // Condição atual: intensidade >= MÉDIA
-            const hasIntensity = b.notionalLong + b.notionalShort >= 10_000_000;
-
-            // Nova condição: volume de liquidação significantivo
-            const hasLiquidation = b.liqVolLong >= 10_000_000 || b.liqVolShort >= 10_000_000;
-
-            // Mostra se tiver intensidade OU liquidação significativa
-            return hasIntensity || hasLiquidation;
-        });
+        // Filtro para tabela resumida: mostrar apenas pontos destacados (if not already filtered by worker)
+        if (isResumida) {
+            bandArray = bandArray.filter(b => {
+                if (b.isEmpty) return false;
+                const hasIntensity = b.notionalLong + b.notionalShort >= 10_000_000;
+                const hasLiquidation = b.liqVolLong >= 10_000_000 || b.liqVolShort >= 10_000_000;
+                return hasIntensity || hasLiquidation;
+            });
+        }
     }
 
     if (bandArray.length === 0) {
@@ -508,6 +522,16 @@ function buildBands(rows, currentPrices, fxRates, activeEntryCurrency, bandSize,
         }
     }
 
+    // PERFORMANCE: Pre-sort positions for tooltips once per buildBands instead of in the renderer (O(B log B))
+    Object.values(bands).forEach(b => {
+        if (b.positionsLong.length > 0) {
+            b.positionsLong.sort((x, y) => y.positionValue - x.positionValue);
+        }
+        if (b.positionsShort.length > 0) {
+            b.positionsShort.sort((x, y) => y.positionValue - x.positionValue);
+        }
+    });
+
     const bandsWithPosCount = Object.values(bands).filter(b => !b.isEmpty).length;
 
     return { bands, totalLongNotional, totalShortNotional, bandsWithPosCount };
@@ -732,17 +756,16 @@ function createRowRenderer(context) {
             tooltipData = {
                 longs: [],
                 shorts: [],
-                longsCount: 0,
-                shortsCount: 0,
+                longsCount: b.whalesLongCount || 0,
+                shortsCount: b.whalesShortCount || 0,
                 longsRemaining: 0,
                 shortsRemaining: 0
             };
 
             if (b.positionsLong.length > 0) {
-                tooltipData.longsCount = new Set(b.positionsLong.map(p => p.address)).size;
-                const sortedLongs = [...b.positionsLong].sort((x, y) => y.positionValue - x.positionValue);
-                tooltipData.longs = sortedLongs.slice(0, maxItems).map(p => {
-                    const entryCorr = getCorrelatedEntry(p, activeEntryCurrency, currentPrices, fxRates);
+                // PERFORMANCE: Use pre-calculated whalesLongCount from worker
+                tooltipData.longs = b.positionsLong.slice(0, maxItems).map(p => {
+                    const entryCorr = p._entCcy || getCorrelatedEntry(p, activeEntryCurrency, currentPrices, fxRates);
                     return {
                         name: p.displayName || p.address.substring(0, 6) + '...',
                         coin: p.coin,
@@ -752,14 +775,13 @@ function createRowRenderer(context) {
                             : fmtUsdCompact(p.positionValue)
                     };
                 });
-                tooltipData.longsRemaining = Math.max(0, sortedLongs.length - maxItems);
+                tooltipData.longsRemaining = Math.max(0, b.positionsLong.length - maxItems);
             }
 
             if (b.positionsShort.length > 0) {
-                tooltipData.shortsCount = new Set(b.positionsShort.map(p => p.address)).size;
-                const sortedShorts = [...b.positionsShort].sort((x, y) => y.positionValue - x.positionValue);
-                tooltipData.shorts = sortedShorts.slice(0, maxItems).map(p => {
-                    const entryCorr = getCorrelatedEntry(p, activeEntryCurrency, currentPrices, fxRates);
+                // PERFORMANCE: Use pre-calculated whalesShortCount from worker
+                tooltipData.shorts = b.positionsShort.slice(0, maxItems).map(p => {
+                    const entryCorr = p._entCcy || getCorrelatedEntry(p, activeEntryCurrency, currentPrices, fxRates);
                     return {
                         name: p.displayName || p.address.substring(0, 6) + '...',
                         coin: p.coin,
@@ -769,7 +791,7 @@ function createRowRenderer(context) {
                             : fmtUsdCompact(p.positionValue)
                     };
                 });
-                tooltipData.shortsRemaining = Math.max(0, sortedShorts.length - maxItems);
+                tooltipData.shortsRemaining = Math.max(0, b.positionsShort.length - maxItems);
             }
         }
 
@@ -844,16 +866,14 @@ function createRowRenderer(context) {
             'th-agg-ativosShort': `<td class="col-agg-assets ${autoFitClass}" style="color:${colorShort}; font-size:11px; max-width:150px;" title="${Array.from(b.ativosShort).join(', ')}">${wrap(Array.from(b.ativosShort).join(', '))}</td>`
         };
 
-        // Get saved column order (if any)
+        // PERFORMANCE: Lifted state lookup outside the row-by-row renderer loop
         const savedOrder = isResumida ? getAggColumnOrderResumida() : getAggColumnOrder();
 
         // Build content in the correct order
         let newContent;
         if (savedOrder && savedOrder.length > 0) {
-            // Use saved order
             newContent = savedOrder.map(thId => cellMap[thId] || '').join('');
         } else {
-            // Use default order
             newContent = Object.values(cellMap).join('');
         }
 
@@ -866,17 +886,17 @@ function createRowRenderer(context) {
 // ═════════════════════════════════════════════
 
 /**
- * Renders the main aggregation table
+ * Render standard aggregation table
  */
-export function renderAggregationTable(force = false) {
-    return renderAggregationTableBase({ isResumida: false, force });
+export function renderAggregationTable(force = false, workerData = null) {
+    return renderAggregationTableBase({ isResumida: false, force, workerData });
 }
 
 /**
- * Renders the resumida aggregation table
+ * Render summary aggregation table
  */
-export function renderAggregationTableResumida(force = false) {
-    return renderAggregationTableBase({ isResumida: true, force });
+export function renderAggregationTableResumida(force = false, workerData = null) {
+    return renderAggregationTableBase({ isResumida: true, force, workerData });
 }
 
 /**

@@ -6,8 +6,11 @@ import {
     getAllRows, getDisplayedRows, getSelectedCoins, getActiveCurrency,
     getActiveEntryCurrency, getShowSymbols, getSortKey, getSortDir,
     getVisibleColumns, getColumnOrder, setDisplayedRows, getCurrentPrices, getFxRates, getChartHighLevSplit, getFontSize, getFontSizeKnown, getDecimalPlaces, getMinBtcVolume, getScanning,
-    getWhaleMeta, getPriceUpdateVersion, getRowHeight, getColumnWidth, getColumnWidths, getAutoFitText
+    getWhaleMeta, getPriceUpdateVersion, getRowHeight, getColumnWidth, getColumnWidths, getAutoFitText,
+    getAggInterval, getLiquidationMinPriceFull, getLiquidationMaxPriceFull,
+    getLiquidationMinPriceSummary, getLiquidationMaxPriceSummary, getStatsSummary
 } from '../state.js';
+import { updateCoinFilter } from './combobox.js';
 import { adjustFontSizeToFit } from '../utils/ui.js';
 import { convertToActiveCcy } from '../utils/currency.js';
 import { fmt, fmtUSD, fmtAddr, fmtCcy } from '../utils/formatters.js';
@@ -29,6 +32,14 @@ const filterCache = new Cache(5000);
 // Performance tracking
 let lastRenderTime = 0;
 let renderCount = 0;
+
+// Persistent Map for updateTablePriceData (O(1) lookup)
+let _rowLookupMap = new Map();
+let _lastLookupRowsHash = '';
+
+// Selective Data Transfer state
+let _lastSentAllRowsHash = '';
+let _lastSentWhaleMetaHash = '';
 
 // Debounced render function to reduce DOM updates - use adaptive debounce
 const debouncedRenderTable = adaptiveDebounce(() => {
@@ -461,9 +472,37 @@ function reorderTableHeadersAndFilters(columnOrder) {
     //console.log('[reorderTableHeadersAndFilters] ════════════════════════════════════════');
 }
 
-export function updateStats(showSymbols, allRows) {
-    // FALLBACK: If not using worker or if called manually, calculate stats
-    // This maintains backward compatibility but should be avoided in the hot path.
+export function updateStats(showSymbols, allRows, fastUPnL = null) {
+    /** 
+     * PERFORMANCE: O(N_coins) fast path for global UPnL.
+     * Use the pre-calculated stats summary to calculate global UPnL instantly.
+     */
+    if (fastUPnL !== null || (allRows && allRows._isAllPos)) {
+        let totalUpnl = fastUPnL;
+        if (totalUpnl === null) {
+            const summary = getStatsSummary();
+            const currentPrices = getCurrentPrices();
+            let sumValue = 0;
+            // O(N_coins) loop: much faster than O(N_positions)
+            for (const coin in summary.netSziPerCoin) {
+                sumValue += (currentPrices[coin] || 0) * summary.netSziPerCoin[coin];
+            }
+            totalUpnl = sumValue - summary.totalEntryNotional;
+        }
+
+        // If we only need total UPnL update (common during price ticks)
+        const upnlEl = document.getElementById('stats-total-upnl');
+        if (upnlEl) {
+            const valUSD = fmtUSD(totalUpnl);
+            if (upnlEl.textContent !== valUSD) {
+                upnlEl.textContent = valUSD;
+                upnlEl.className = `value mono ${totalUpnl >= 0 ? 'green' : 'red'}`;
+            }
+        }
+        if (fastUPnL !== null) return; // Only wanted fast update
+    }
+
+    // FALLBACK: Calculate full stats if needed
     const whalesWithPos = new Set();
     const whalesLong = new Set();
     const whalesShort = new Set();
@@ -637,6 +676,25 @@ function _renderTableInternal() {
                 // PERFORMANCE: Update stats immediately from worker data
                 if (stats) {
                     applyWorkerStats(stats, showSymbols);
+                    // NEW: Pass coin-specific stats to ranking panel for O(1) rendering
+                    updateRankingPanel(stats);
+                    // NEW: Update coin filter menu with pre-calculated list
+                    updateCoinFilter(stats);
+
+                    // NEW: Render aggregation tables with worker-calculated bands
+                    if (stats.aggFull) renderAggregationTable(false, stats.aggFull);
+                    if (stats.aggRes) renderAggregationTableResumida(false, stats.aggRes);
+
+                    // PERFORMANCE: Skip rebuilding map if hash hasn't changed
+                    const currentLookupHash = `${processedRows.length}|${priceUpdateVersion}`;
+                    if (currentLookupHash !== _lastLookupRowsHash) {
+                        _rowLookupMap = new Map();
+                        for (let i = 0; i < processedRows.length; i++) {
+                            const r = processedRows[i];
+                            _rowLookupMap.set(r.address + r.coin, r);
+                        }
+                        _lastLookupRowsHash = currentLookupHash;
+                    }
                 }
 
                 finalizeTableRender(processedRows, showSymbols);
@@ -655,10 +713,35 @@ function _renderTableInternal() {
 
             const sortState = { sortKey, sortDir };
 
+            const aggParams = {
+                bandSize: getAggInterval(),
+                minPriceFull: getLiquidationMinPriceFull(),
+                maxPriceFull: getLiquidationMaxPriceFull(),
+                minPriceSummary: getLiquidationMinPriceSummary(),
+                maxPriceSummary: getLiquidationMaxPriceSummary()
+            };
+
+            // PERFORMANCE: Selective data transfer. Only send large arrays if they changed.
+            // We use length and a simple property count for whaleMeta to avoid heavy hashing.
+            const allRowsHash = `${allRows.length}`;
+            const whaleMetaHash = `${Object.keys(whaleMeta).length}`;
+
+            const payload = {
+                filterState, sortState, currencyState, aggParams,
+                priceUpdateVersion: getPriceUpdateVersion()
+            };
+
+            if (allRowsHash !== _lastSentAllRowsHash) {
+                payload.allRows = allRows;
+                _lastSentAllRowsHash = allRowsHash;
+            }
+            if (whaleMetaHash !== _lastSentWhaleMetaHash) {
+                payload.whaleMeta = whaleMeta;
+                _lastSentWhaleMetaHash = whaleMetaHash;
+            }
+
             // Send payload to worker
-            dataWorker.postMessage({
-                allRows, whaleMeta, filterState, sortState, currencyState
-            });
+            dataWorker.postMessage(payload);
 
             return; // Exit here, the rest is handled by finalizeTableRender
         } else {
@@ -950,7 +1033,7 @@ function _renderTableInternal() {
                 ? columnOrder.filter(Key => filteredCells[Key] !== undefined)
                 : Object.keys(filteredCells);
 
-            return `<tr class="${meta.displayName ? 'row-known-address' : ''}" style="height: ${rowHeight}px">
+            return `<tr class="${meta.displayName ? 'row-known-address' : ''}" style="height: ${rowHeight}px" data-address="${r.address}">
             ${orderToUse.map(Key => filteredCells[Key]).join('')}
         </tr>`;
         };
@@ -985,6 +1068,7 @@ function _renderTableInternal() {
         if (debugRows) debugRows.textContent = rows.length;
 
         // Update ranking panel after rendering table (async)
+        // If we don't have worker stats at this exact moment, it will fallback to UI calculation
         updateRankingPanel();
 
         // Render aggregation table based on filtered rows
@@ -1089,9 +1173,10 @@ export function updateTableDataOnly() {
 
     // Optimization: Build a Map for O(1) lookup
     const rowDataMap = new Map();
-    displayedRows.forEach(r => {
-        rowDataMap.set(`${fmtAddr(r.address)}_${r.coin} `, r);
-    });
+    for (let i = 0; i < displayedRows.length; i++) {
+        const r = displayedRows[i];
+        rowDataMap.set(r.address + r.coin, r);
+    }
 
     // Validate headers are still attached to DOM
     const headersValid = areHeadersValid();
@@ -1148,7 +1233,8 @@ export function updateTableDataOnly() {
         if (!coin) return;
 
         // Find the matching row data using O(1) lookup
-        const rowData = rowDataMap.get(`${address}_${coin} `);
+        const rawAddr = rowEl.dataset.address || address;
+        const rowData = rowDataMap.get(rawAddr + coin);
 
         if (!rowData) return;
 
@@ -1288,11 +1374,20 @@ export function updateTablePriceData() {
     const displayedRows = getDisplayedRows();
     if (!displayedRows || displayedRows.length === 0) return;
 
-    // Optimization: Build a Map for O(1) lookup
-    const rowDataMap = new Map();
-    displayedRows.forEach(r => {
-        rowDataMap.set(`${fmtAddr(r.address)}_${r.coin} `, r);
-    });
+    // PERFORMANCE: Use persistent _rowLookupMap if data hasn't changed
+    const currentRowsHash = `${displayedRows.length}|${getPriceUpdateVersion()}`;
+    const rowDataMap = (currentRowsHash === _lastLookupRowsHash && _rowLookupMap.size > 0)
+        ? _rowLookupMap
+        : (() => {
+            const map = new Map();
+            for (let i = 0; i < displayedRows.length; i++) {
+                const r = displayedRows[i];
+                map.set(r.address + r.coin, r);
+            }
+            _rowLookupMap = map;
+            _lastLookupRowsHash = currentRowsHash;
+            return map;
+        })();
 
     const table = document.getElementById('positionsTable');
     if (!table) return;
@@ -1300,145 +1395,75 @@ export function updateTablePriceData() {
     const tbody = table.querySelector('tbody');
     if (!tbody) return;
 
-    // Update stats panel
-    try {
-        updateStats(showSymbols, displayedRows);
-    } catch (err) {
-        console.error('updateStats error (non-fatal):', err);
-    }
+    // PERFORMANCE: Use specialized fast stats update (O(N_coins) instead of O(N_positions))
+    updateStats(showSymbols, null, null);
 
-    // Get all visible rows in the DOM
-    const rows = tbody.querySelectorAll('tr');
+    // BATCHED DOM UPDATES: Get all rows at once
+    const tableRows = tbody.querySelectorAll('tr');
 
-    rows.forEach((rowEl) => {
-        // Skip empty state row
-        if (rowEl.querySelector('.empty-cell')) return;
+    // Cache common values to avoid repeated property access
+    const btcPriceForHighlight = parseFloat(currentPrices['BTC'] || 0);
+    const entMeta = CURRENCY_META[activeEntryCurrency] || CURRENCY_META.USD;
+    const usdSym = showSymbols ? '$' : '';
+    const entSym = showSymbols ? entMeta.symbol : '';
 
-        // Find the address cell to identify the row data
-        const addressCell = rowEl.querySelector('.col-address .addr-text');
-        if (!addressCell) return;
+    for (let i = 0; i < tableRows.length; i++) {
+        const rowEl = tableRows[i];
+        if (rowEl.dataset.isSpacer) continue;
+        if (rowEl.querySelector('.empty-cell')) continue;
 
-        const address = addressCell.textContent?.trim();
-        if (!address) return;
-
-        // Find the coin cell to get the coin
-        const coinCell = rowEl.querySelector('.col-coin .coin-badge');
-        if (!coinCell) return;
-
-        const coinText = coinCell.textContent?.trim();
-        const coin = coinText?.split(' ')[0];
-        if (!coin) return;
-
-        // Find the matching row data using O(1) lookup
-        const rowData = rowDataMap.get(`${address}_${coin} `);
-
-        if (!rowData) return;
+        // PERFORMANCE: Use dataset or identifying attributes to skip heavy querySelector if possible
+        const rowData = rowDataMap.get(rowEl.dataset.rowKey || (rowEl.dataset.address + (rowEl.dataset.coin || '')));
+        if (!rowData) continue;
 
         const meta = whaleMeta[rowData.address] || {};
-        const side = rowData.side;
-        const pnlClass = rowData.unrealizedPnl >= 0 ? 'green' : 'red';
-        const fundClass = rowData.funding >= 0 ? 'green' : 'red';
-
-        // Calculate BTC volume for highlighting
-        const btcPrice = parseFloat(currentPrices['BTC'] || 0);
-        const volBTC = btcPrice > 0 ? rowData.positionValue / btcPrice : 0;
+        const volBTC = btcPriceForHighlight > 0 ? rowData.positionValue / btcPriceForHighlight : 0;
         const isHighlighted = meta.displayName || (minBtcVolume > 0 && volBTC >= minBtcVolume);
 
-        // Get currency meta for formatting
-        const entMeta = CURRENCY_META[activeEntryCurrency] || CURRENCY_META.USD;
-        const usdSym = showSymbols ? '$' : '';
-        const entSym = showSymbols ? entMeta.symbol : '';
+        // Batch cell updates
+        const cells = rowEl.cells;
+        for (let j = 0; j < cells.length; j++) {
+            const cell = cells[j];
+            const colClass = cell.classList[0]; // Assuming col-XXX is first class
+            if (!colClass || !colClass.startsWith('col-')) continue;
 
-        // Update position value cell
-        const posValueCell = rowEl.querySelector('.col-positionValue');
-        if (posValueCell) {
-            posValueCell.textContent = `${usdSym}${fmt(rowData.positionValue)} `;
-        }
+            const colName = colClass.substring(4);
 
-        // Update valueCcy cell
-        const valueCcyCell = rowEl.querySelector('.col-valueCcy');
-        if (valueCcyCell) {
-            const ccyVal = convertToActiveCcy(rowData.positionValue, null, activeCurrency, fxRates);
-            valueCcyCell.textContent = fmtCcy(ccyVal, null, activeCurrency, showSymbols);
-            if (isHighlighted) {
-                valueCcyCell.style.fontWeight = '600';
+            switch (colName) {
+                case 'positionValue':
+                    cell.textContent = `${usdSym}${fmt(rowData.positionValue)}`;
+                    break;
+                case 'valueCcy':
+                    const ccyVal = convertToActiveCcy(rowData.positionValue, null, activeCurrency, fxRates);
+                    const formattedCcy = fmtCcy(ccyVal, null, activeCurrency, showSymbols);
+                    if (cell.textContent !== formattedCcy) cell.textContent = formattedCcy;
+                    if (isHighlighted) cell.style.fontWeight = '600';
+                    break;
+                case 'entryCcy':
+                    const entVal = getCorrelatedEntry(rowData, activeEntryCurrency, currentPrices, fxRates);
+                    const formattedEnt = entSym + entVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    if (cell.textContent !== formattedEnt) cell.textContent = formattedEnt;
+                    if (isHighlighted) cell.style.fontWeight = '600';
+                    break;
+                case 'unrealizedPnl':
+                    const pnlVal = rowData.unrealizedPnl;
+                    const formattedPnl = fmtUSD(pnlVal);
+                    if (cell.textContent !== formattedPnl) {
+                        cell.textContent = formattedPnl;
+                        cell.className = `mono col-unrealizedPnl ${pnlVal >= 0 ? 'green' : 'red'}`;
+                    }
+                    if (isHighlighted) cell.style.fontWeight = '600';
+                    break;
+                case 'liqPx':
+                    if (rowData.liquidationPx > 0) {
+                        const liqPrice = getCorrelatedPrice(rowData, rowData.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
+                        cell.textContent = entSym + liqPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        if (isHighlighted) cell.style.fontWeight = '600';
+                    }
+                    break;
             }
         }
-
-        // Update entryCcy cell
-        const entryCcyCell = rowEl.querySelector('.col-entryCcy');
-        if (entryCcyCell) {
-            const entVal = getCorrelatedEntry(rowData, activeEntryCurrency, currentPrices, fxRates);
-            entryCcyCell.textContent = entSym + entVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            if (isHighlighted) {
-                entryCcyCell.style.fontWeight = '600';
-            }
-        }
-
-        // Update unrealizedPnl cell
-        const pnlCell = rowEl.querySelector('.col-unrealizedPnl');
-        if (pnlCell) {
-            pnlCell.textContent = fmtUSD(rowData.unrealizedPnl);
-            pnlCell.className = `mono col - unrealizedPnl ${pnlClass} `;
-            if (isHighlighted) {
-                pnlCell.style.fontWeight = '600';
-            }
-        }
-
-        // Update funding cell
-        const fundingCell = rowEl.querySelector('.col-funding');
-        if (fundingCell) {
-            fundingCell.textContent = fmtUSD(rowData.funding);
-            fundingCell.className = `mono col - funding ${fundClass} `;
-        }
-
-        // Update liqPx cell
-        const liqPxCell = rowEl.querySelector('.col-liqPx');
-        if (liqPxCell && rowData.liquidationPx > 0) {
-            const liqPrice = getCorrelatedPrice(rowData, rowData.liquidationPx, activeEntryCurrency, currentPrices, fxRates);
-            liqPxCell.textContent = entSym + liqPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            if (isHighlighted) {
-                liqPxCell.style.fontWeight = '600';
-            }
-        }
-
-        // Update distToLiq cell
-        const distCell = rowEl.querySelector('.col-distToLiq');
-        if (distCell && rowData.distPct !== null) {
-            const pct = rowData.distPct;
-            const barClass = pct > 30 ? 'safe' : pct > 10 ? 'warn' : 'danger';
-            const barW = Math.min(pct, 100).toFixed(0);
-            const liqStr = rowData.liquidationPx > 0 ? (showSymbols ? '$' : '') + rowData.liquidationPx.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—';
-
-            const pctSpan = distCell.querySelector('.liq-pct');
-            if (pctSpan) {
-                pctSpan.textContent = `${pct.toFixed(0)}% `;
-                pctSpan.className = `liq - pct ${barClass === 'safe' ? 'green' : barClass === 'warn' ? '' : 'red'} `;
-                if (barClass === 'warn') {
-                    pctSpan.style.color = 'var(--orange)';
-                } else {
-                    pctSpan.style.color = '';
-                }
-            }
-
-            const liqPriceSpan = distCell.querySelector('.liq-price');
-            if (liqPriceSpan) {
-                liqPriceSpan.textContent = liqStr;
-            }
-
-            const liqBar = distCell.querySelector('.liq-bar');
-            if (liqBar) {
-                liqBar.style.width = `${barW}% `;
-                liqBar.className = `liq - bar ${barClass} `;
-            }
-        }
-
-        // Update accountValue cell
-        const accValueCell = rowEl.querySelector('.col-accountValue');
-        if (accValueCell) {
-            accValueCell.textContent = `${usdSym}${fmt(meta.accountValue || 0)} `;
-        }
-    });
+    }
 
     // Update aggregation tables
     try {
