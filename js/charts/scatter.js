@@ -165,7 +165,7 @@ function enableChartScaleResizing(canvasId, getChartInstance, resetBtnId) {
     });
 }
 
-export function renderScatterPlot() {
+export function renderScatterPlot(workerScatterPoints = null) {
     const section = document.getElementById('chart-section');
     if (!section) return;
 
@@ -180,21 +180,64 @@ export function renderScatterPlot() {
         section.style.height = getChartHeight() + 'px';
     }
 
+    // Check if the chart section is collapsed
+    if (section && section.classList.contains('collapsed')) {
+        // Flag for future refresh when opened
+        section.dataset.dirty = 'true';
+        return;
+    }
+    delete section?.dataset.dirty;
+
     const canvas = document.getElementById('scatterChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    // PERFORMANCE: Use pre-calculated worker fields for mapping
-    const bubbleScale = getBubbleScale();
-    const data = displayedRows.map(r => {
-        if (r._volBTC <= 0) return null;
-        return {
-            x: r._entCcy,
-            y: r._volBTC,
-            r: r._sqrtPosVal / 1000 * bubbleScale,
-            _raw: r
-        };
-    }).filter(d => d !== null);
+    // PERFORMANCE: Use pre-calculated worker fields and single-pass for bounds/data mapping
+    let data = [];
+    let minX = 0;
+    let maxX = 0;
+
+    const activeEntryCcy = getActiveEntryCurrency();
+    const btcPrice = parseFloat(getCurrentPrices()['BTC'] || 0);
+    const fxRates = getFxRates();
+    const rate = fxRates[activeEntryCcy] || 1;
+    const refPrice = btcPrice * rate;
+
+    if (workerScatterPoints) {
+        // FAST PATH: Use pre-calculated data from worker
+        data = workerScatterPoints;
+        if (data.length > 0) {
+            minX = data[0].x;
+            maxX = data[0].x;
+            for (let i = 1; i < data.length; i++) {
+                const x = data[i].x;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+            }
+        }
+    } else {
+        // FALLBACK: Calculate manually (O(N))
+        const bubbleScale = getBubbleScale();
+        minX = refPrice;
+        maxX = refPrice;
+
+        for (let i = 0; i < displayedRows.length; i++) {
+            const r = displayedRows[i];
+            if (r._volBTC <= 0) continue;
+
+            const x = r._entCcy;
+            const d = {
+                x: x,
+                y: r._volBTC,
+                r: r._sqrtPosVal / 1000 * bubbleScale,
+                _raw: r
+            };
+            data.push(d);
+
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+        }
+    }
 
     if (data.length === 0) {
         section.style.display = 'none';
@@ -202,8 +245,8 @@ export function renderScatterPlot() {
     }
 
     // PERFORMANCE: Hyper-fast hash for change detection
-    const activeEntryCcy = getActiveEntryCurrency();
     const chartMode = getChartMode();
+    const bubbleScale = getBubbleScale();
     const highLevSplit = getChartHighLevSplit();
     const currentDataHash = `${displayedRows.length}|${chartMode}|${highLevSplit}|${bubbleScale}|${getBubbleOpacity()}|${getAggregationFactor()}|${activeEntryCcy}|${getPriceUpdateVersion()}`;
 
@@ -219,10 +262,6 @@ export function renderScatterPlot() {
 
     lastDataHash = currentDataHash;
 
-    const btcPrice = parseFloat(getCurrentPrices()['BTC'] || 0);
-    const fxRates = getFxRates();
-    const rate = fxRates[activeEntryCcy] || 1;
-    const refPrice = btcPrice * rate;
     const customColors = getLeverageColors();
     const opacity = getBubbleOpacity();
 
@@ -233,9 +272,6 @@ export function renderScatterPlot() {
 
     if (chartMode === 'column') {
         chartType = 'bar';
-        const xValues = data.map(d => d.x);
-        const minX = xValues.reduce((min, val) => Math.min(min, val), refPrice);
-        const maxX = xValues.reduce((max, val) => Math.max(max, val), refPrice);
         const numBins = getAggregationFactor();
         const range = maxX - minX || 1;
         const binSize = range / numBins;
@@ -273,20 +309,36 @@ export function renderScatterPlot() {
     } else if (chartMode === 'lines') {
         chartType = 'bar';
         localIndexAxis = 'y';
-        datasets = data.map(d => {
+
+        // PERFORMANCE: Group positions into 4 datasets instead of one per row (O(N) -> O(1) datasets)
+        const groupedData = {
+            longLow: { label: `Longs (≤${highLevSplit}x)`, data: [], backgroundColor: hexToRgba(customColors.longLow, 0.7), borderColor: customColors.longLow },
+            longHigh: { label: `Longs (>${highLevSplit}x)`, data: [], backgroundColor: hexToRgba(customColors.longHigh, 0.7), borderColor: customColors.longHigh },
+            shortLow: { label: `Shorts (≤${highLevSplit}x)`, data: [], backgroundColor: hexToRgba(customColors.shortLow, 0.7), borderColor: customColors.shortLow },
+            shortHigh: { label: `Shorts (>${highLevSplit}x)`, data: [], backgroundColor: hexToRgba(customColors.shortHigh, 0.7), borderColor: customColors.shortHigh }
+        };
+
+        for (let i = 0; i < data.length; i++) {
+            const d = data[i];
             const r = d._raw;
             const lev = Math.abs(r.leverageValue);
-            const color = r.side === 'long' ? (lev >= highLevSplit ? customColors.longHigh : customColors.longLow) : (lev >= highLevSplit ? customColors.shortHigh : customColors.shortLow);
-            return {
-                label: `${r.coin} ${r.side === 'long' ? 'Long' : 'Short'} @ ${d.x}`,
-                data: [{ x: d.y, y: d.x }],
-                backgroundColor: hexToRgba(color, 0.7),
-                borderColor: color,
+            const key = r.side === 'long' ? (lev >= highLevSplit ? 'longHigh' : 'longLow') : (lev >= highLevSplit ? 'shortHigh' : 'shortLow');
+
+            // Map data to x/y objects
+            groupedData[key].data.push({ x: d.y, y: d.x, _raw: r });
+        }
+
+        datasets = Object.values(groupedData)
+            .filter(g => g.data.length > 0)
+            .map(g => ({
+                ...g,
                 borderWidth: 1,
                 barThickness: getLineThickness(),
-                _raw: r
-            };
-        });
+                grouped: true,
+                categoryPercentage: 1.0,
+                barPercentage: 1.0
+            }));
+
         const maxVol = data.reduce((max, d) => Math.max(max, d.y), 0);
         localScales = {
             x: { type: 'linear', position: 'bottom', stacked: true, min: 0, max: maxVol * 1.1 },

@@ -145,22 +145,48 @@ export function onCoinSearch() {
     renderCoinDropdown(query);
 }
 
+// Coin dropdown state for change detection
+let _lastCoinDropdownHash = '';
+
 export function renderCoinDropdown(query = '') {
     const dd = document.getElementById('coinDropdown');
     if (!dd) return;
-    const q = query.trim().toUpperCase();
-    const filtered = q ? _coinOptions.filter(c => c.toUpperCase().includes(q)) : _coinOptions;
 
-    let html = `<div class="combobox-item all-item ${getSelectedCoins().length === 0 ? 'selected' : ''}" onmousedown="event.preventDefault(); selectCoin('','')">All coins</div>`;
-    if (filtered.length === 0) {
+    const selectedCoins = getSelectedCoins();
+    const selectedSet = new Set(selectedCoins);
+    const q = query.toLowerCase().trim();
+
+    // PERFORMANCE: Use simple hash for change detection
+    const currentHash = `${q}|${selectedCoins.length}|${_coinOptions.length}`;
+    if (currentHash === _lastCoinDropdownHash && q !== '') {
+        return;
+    }
+    _lastCoinDropdownHash = currentHash;
+
+    let html = `<div class="combobox-item all-item ${selectedCoins.length === 0 ? 'selected' : ''}" onmousedown="event.preventDefault(); selectCoin('','')">All coins</div>`;
+
+    let matchCount = 0;
+    const items = [];
+
+    for (let i = 0; i < _coinOptions.length; i++) {
+        const c = _coinOptions[i];
+        if (q && !c.toLowerCase().includes(q)) continue;
+
+        matchCount++;
+        const isSel = selectedSet.has(c);
+        items.push(`<div class="combobox-item${isSel ? ' selected' : ''}" onmousedown="event.preventDefault(); selectCoin('${c}','${c}')">` +
+            `<span class="item-label">${c}</span>${isSel ? '<span class="item-remove">✕</span>' : ''}</div>`);
+
+        // Limit dropdown results for performance if query is short
+        if (q === '' && matchCount >= 100) break;
+    }
+
+    if (matchCount === 0) {
         html += `<div class="combobox-empty">No match</div>`;
     } else {
-        html += filtered.map(c => {
-            const isSel = getSelectedCoins().includes(c);
-            return `<div class="combobox-item${isSel ? ' selected' : ''}" onmousedown="event.preventDefault(); selectCoin('${c}','${c}')">` +
-                `<span class="item-label">${c}</span>${isSel ? '<span class="item-remove">✕</span>' : ''}</div>`;
-        }).join('');
+        html += items.join('');
     }
+
     dd.innerHTML = html;
 }
 
@@ -197,10 +223,15 @@ export function updateCoinSearchLabel() {
     }
 }
 
-export function updateCoinFilter(allRows) {
-    //console.log('updateCoinFilter called, selectedCoins:', getSelectedCoins());
-    const coins = [...new Set(allRows.map(r => r.coin))].sort();
-    _coinOptions = coins;
+export function updateCoinFilter(workerDataOrRows) {
+    // If we received stats from worker, use the pre-calculated uniqueCoins
+    if (workerDataOrRows && workerDataOrRows.uniqueCoins) {
+        _coinOptions = workerDataOrRows.uniqueCoins;
+    } else if (Array.isArray(workerDataOrRows)) {
+        // Fallback for manual updates or missing worker data
+        _coinOptions = [...new Set(workerDataOrRows.map(r => r.coin))].sort();
+    }
+
     // Only update label if no coins are selected (preserve user selection)
     if (getSelectedCoins().length === 0) {
         updateCoinSearchLabel();

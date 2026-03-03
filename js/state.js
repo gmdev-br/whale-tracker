@@ -8,6 +8,7 @@ let allRows = [];         // flat: one row per position
 let displayedRows = [];   // after filters
 let whaleMeta = {};       // { address: { displayName, accountValue, windowPerformances } }
 let lastSeenAccountValues = {}; // for Delta Scanning
+let _statsSummary = { netSziPerCoin: {}, totalEntryNotional: 0 }; // PERFORMANCE: For O(N_coins) stats update
 
 // Column state
 let visibleColumns = [];   // Default all visible
@@ -235,7 +236,18 @@ export const setState = (updates) => {
 
 // Individual setters for common state updates
 export const setWhaleList = (value) => { whaleList = value; };
-export const setAllRows = (value) => { allRows = value; };
+export const setAllRows = (value) => {
+    allRows = value;
+    // PERFORMANCE: Pre-calculate summary for O(N_coins) stats updates
+    const summary = { netSziPerCoin: {}, totalEntryNotional: 0 };
+    for (let i = 0; i < value.length; i++) {
+        const r = value[i];
+        summary.netSziPerCoin[r.coin] = (summary.netSziPerCoin[r.coin] || 0) + r.szi;
+        summary.totalEntryNotional += (r.entryPx * r.szi);
+    }
+    _statsSummary = summary;
+};
+export const getStatsSummary = () => _statsSummary;
 export const setDisplayedRows = (value) => { displayedRows = value; };
 export const setScanning = (value) => { scanning = value; };
 export const setIsPaused = (value) => { isPaused = value; };

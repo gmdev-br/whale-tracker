@@ -118,37 +118,34 @@ export async function fetchWithRetry(whale, retries = 3) {
 export function processState(whale, state, allRows) {
     if (!state) return;
     const currentPrices = getCurrentPrices();
-    const positions = (state.assetPositions || []).filter(p => {
-        const size = parseFloat(p.position.szi);
-        if (size === 0) return false;
+    const assetPositions = state.assetPositions || [];
+    const positions = [];
 
-        // Validate position data integrity
+    // Single pass filtering and pre-parsing
+    for (let i = 0; i < assetPositions.length; i++) {
+        const p = assetPositions[i];
         const pos = p.position;
+        const size = parseFloat(pos.szi);
+        if (size === 0) continue;
+
         if (pos.entryPx === null || pos.entryPx === undefined) {
             console.warn(`Invalid entry price for ${whale.ethAddress} in ${pos.coin}`);
-            return false;
+            continue;
         }
 
-        return true;
-    });
+        // Store for later mapping
+        p._parsedSize = size;
+        positions.push(p);
+    }
 
-    // Check for account value consistency
     let accountValue = parseFloat(whale.accountValue);
-    const positionCount = (state.assetPositions || []).filter(p => parseFloat(p.position.szi) !== 0).length;
 
     if (state.marginSummary && state.marginSummary.accountValue) {
         const chAccountValue = parseFloat(state.marginSummary.accountValue);
         const diff = Math.abs(accountValue - chAccountValue);
         const pctDiff = accountValue > 0 ? (diff / accountValue) * 100 : 0;
 
-        // If significant difference, use clearinghouse value
-        if (pctDiff > 20) {
-            // Only warn for meaningful mismatches (not closed accounts)
-            // CH=$0 means account closed positions - this is normal, not an error
-            if (chAccountValue > 0) {
-                // Warning silenced - account value mismatch detected but suppressed
-                // console.warn(`[ACCOUNT_MISMATCH] ${whale.displayName || whale.ethAddress.slice(0, 12)}: LB $${(accountValue/1e6).toFixed(1)}M vs CH $${(chAccountValue/1e6).toFixed(1)}M (${pctDiff.toFixed(1)}% diff), positions: ${positionCount}`);
-            }
+        if (pctDiff > 20 && chAccountValue > 0) {
             accountValue = chAccountValue;
         }
     }
@@ -161,19 +158,24 @@ export function processState(whale, state, allRows) {
         windowPerformances: whale.windowPerformances || {}
     };
 
-    positions.forEach(p => {
+    const ethAddress = whale.ethAddress;
+    for (let i = 0; i < positions.length; i++) {
+        const p = positions[i];
         const pos = p.position;
-        const size = parseFloat(pos.szi);
-        const markPrice = parseFloat(currentPrices[pos.coin] || pos.entryPx);
+        const size = p._parsedSize;
+        const coin = pos.coin;
+        const markPrice = parseFloat(currentPrices[coin] || pos.entryPx);
         const liqPx = parseFloat(pos.liquidationPx);
         const entryPx = parseFloat(pos.entryPx);
+
         let distPct = null;
         if (liqPx > 0 && markPrice > 0) {
             distPct = Math.abs((markPrice - liqPx) / markPrice) * 100;
         }
+
         allRows.push({
-            address: whale.ethAddress,
-            coin: pos.coin,
+            address: ethAddress,
+            coin: coin,
             szi: size,
             side: size > 0 ? 'long' : 'short',
             leverageType: pos.leverage?.type || 'cross',
@@ -187,7 +189,7 @@ export function processState(whale, state, allRows) {
             distPct: distPct,
             marginUsed: parseFloat(pos.marginUsed),
         });
-    });
+    }
 }
 
 export async function streamPositions(whaleList, minVal, maxConcurrency, callbacks) {
@@ -208,13 +210,23 @@ export async function streamPositions(whaleList, minVal, maxConcurrency, callbac
     // Track skipped whales for Delta Scanning
     let skippedCount = 0;
 
+    // PERFORMANCE: Use a Map for O(1) address tracking instead of O(N) array filtering
+    const positionsByAddress = new Map();
+    // Initialize map with existing rows if any
+    allRows.forEach(r => {
+        if (!positionsByAddress.has(r.address)) {
+            positionsByAddress.set(r.address, []);
+        }
+        positionsByAddress.get(r.address).push(r);
+    });
+
     function processWhale(whale) {
         // Delta Scanning: check if account value changed
         const currentVal = parseFloat(whale.accountValue);
         const lastVal = lastSeenAccountValues[whale.ethAddress];
 
         // Only skip if we already have rows for this address (to be safe)
-        const hasData = allRows.some(r => r.address === whale.ethAddress);
+        const hasData = positionsByAddress.has(whale.ethAddress);
 
         if (lastVal && Math.abs(currentVal - lastVal) < 0.01 && hasData) {
             skippedCount++;
@@ -227,19 +239,18 @@ export async function streamPositions(whaleList, minVal, maxConcurrency, callbac
 
         return fetchWithRetry(whale).then(state => {
             if (state) {
-                // PERFORMANCE: Use a more efficient update mechanism.
-                // Instead of filtering the whole array (O(N)), we can rebuild it or use a more targeted approach.
-                // Since this is a stream, we update the global allRows.
-                const addressToUpdate = whale.ethAddress;
+                // Remove existing rows for this address using the Map (O(1))
+                positionsByAddress.set(whale.ethAddress, []);
 
-                // Remove existing rows for this address efficiently if they exist
-                const hasExistingData = allRows.some(r => r.address === addressToUpdate);
-                if (hasExistingData) {
-                    allRows = allRows.filter(r => r.address !== addressToUpdate);
-                    setAllRows(allRows);
-                }
+                // Process state will push new rows into the global allRows array.
+                // To keep the Map in sync, we'll temporarily capture the new rows.
+                const newRowsForWhale = [];
+                processState(whale, state, newRowsForWhale);
 
-                processState(whale, state, allRows);
+                // Update our Map. We DON'T flatten allRows here (O(N)) because 
+                // it would cause O(N*W) complexity during the scan.
+                positionsByAddress.set(whale.ethAddress, newRowsForWhale);
+
                 newSeenAccountValues[whale.ethAddress] = currentVal;
             }
             done++;
@@ -264,17 +275,18 @@ export async function streamPositions(whaleList, minVal, maxConcurrency, callbac
 
         setTimeout(() => {
             setRenderPending(false);
-            updateStats(false, allRows);
-            updateCoinFilter(allRows);
+
+            // PERFORMANCE: Flatten the map once here (at most once every 3s during scan)
+            // instead of on every whale update. This transforms O(N*W) into O(N).
+            allRows = Array.from(positionsByAddress.values()).flat();
+            setAllRows(allRows);
 
             // IMPORTANT: During scanning, use updateTableDataOnly to preserve column widths/order
             // Only do full renderTable on first scan render or when not scanning
             if (getScanning() && !isFirstScanRender && updateTableDataOnly) {
-                //console.log('[scanning] Using updateTableDataOnly to preserve column state');
                 updateTableDataOnly();
             } else {
                 if (isFirstScanRender) {
-                    //console.log('[scanning] First render, using full renderTable');
                     isFirstScanRender = false;
                 }
                 renderTable();

@@ -17,9 +17,10 @@ let marketCapCache = null;
 let marketCapCacheTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// Debounce for updateRankingPanel to avoid excessive calls
+// Ranking panel state for change detection
 let rankingPanelDebounceTimer = null;
 const RANKING_PANEL_DEBOUNCE_MS = 1000; // 1 second debounce
+let _lastRankingPanelHash = '';
 
 // Fetch real market cap data
 export async function fetchMarketCapRanking() {
@@ -71,6 +72,9 @@ export async function updateRankingPanel() {
         return;
     }
 
+    // Capture worker-calculated stats if provided
+    const workerCoinStats = arguments[0]?.coinStats;
+
     // Debounce to avoid excessive calls
     if (rankingPanelDebounceTimer) {
         clearTimeout(rankingPanelDebounceTimer);
@@ -86,21 +90,29 @@ export async function updateRankingPanel() {
         const rankingLimit = getRankingLimit();
         const selectedCoins = getSelectedCoins();
 
-        // Get whale position data first (this is our primary data source)
-        const allRows = getAllRows();
-        const whaleStats = {};
-        allRows.forEach(row => {
-            if (!whaleStats[row.coin]) {
-                whaleStats[row.coin] = {
-                    totalPositionValue: 0,
-                    count: 0,
-                    whales: new Set()
-                };
-            }
-            whaleStats[row.coin].totalPositionValue += row.positionValue;
-            whaleStats[row.coin].count++;
-            whaleStats[row.coin].whales.add(row.address);
-        });
+        // Use worker data if available, otherwise fallback to UI-side calculation (slower)
+        let whaleStats = workerCoinStats;
+        if (!whaleStats) {
+            const allRows = getAllRows();
+            whaleStats = {};
+            allRows.forEach(row => {
+                if (!whaleStats[row.coin]) {
+                    whaleStats[row.coin] = {
+                        totalPositionValue: 0,
+                        count: 0,
+                        whales: new Set()
+                    };
+                }
+                whaleStats[row.coin].totalPositionValue += row.positionValue;
+                whaleStats[row.coin].count++;
+                whaleStats[row.coin].whales.add(row.address);
+            });
+
+            // Normalize for the renderer
+            Object.keys(whaleStats).forEach(c => {
+                whaleStats[c].whaleCount = whaleStats[c].whales.size;
+            });
+        }
 
         // Try to get market cap data
         let marketCapData = [];
@@ -121,16 +133,23 @@ export async function updateRankingPanel() {
         const combinedData = marketCapData
             .slice(0, rankingLimit)
             .map(coin => {
-                const whaleData = whaleStats[coin.symbol] || { totalPositionValue: 0, count: 0, whales: new Set() };
+                const whaleData = whaleStats[coin.symbol] || { totalPositionValue: 0, count: 0, whaleCount: 0 };
                 return {
                     ...coin,
                     whalePositionValue: whaleData.totalPositionValue,
                     whaleCount: whaleData.count,
-                    whaleWhales: whaleData.whales.size
+                    whaleWhales: whaleData.whaleCount
                 };
             });
 
         //console.log('Market cap ranking updated:', combinedData.length, 'coins');
+
+        // PERFORMANCE: Faster hash without JSON.stringify
+        const currentHash = `${combinedData.length}-${combinedData[0]?.whalePositionValue || 0}-${selectedCoins.length}`;
+        if (currentHash === _lastRankingPanelHash) {
+            return;
+        }
+        _lastRankingPanelHash = currentHash;
 
         panel.innerHTML = `
             <div style="display: flex; align-items: center; gap: 8px; margin-right: 10px; color: var(--muted); font-size: 11px; flex-shrink: 0;">
@@ -266,6 +285,9 @@ export function renderQuotesPanel() {
     startPriceTicker();
 }
 
+// Quotes state for change detection
+let _lastQuotesHTMLHash = '';
+
 export function updateQuotesHTML() {
     const panel = document.getElementById('quotesPanel');
     if (!panel) return;
@@ -275,6 +297,18 @@ export function updateQuotesHTML() {
 
     const selectedCoins = getSelectedCoins();
     const currentPrices = getCurrentPrices();
+
+    // PERFORMANCE: Simple change detection to avoid layout thrashing
+    // PERFORMANCE: Use a faster hash (property sum or count) instead of full stringification
+    let priceSum = 0;
+    for (let i = 0; i < selectedCoins.length; i++) {
+        priceSum += (currentPrices[selectedCoins[i]] || 0);
+    }
+    const currentHash = `${selectedCoins.length}-${priceSum.toFixed(2)}`;
+    if (currentHash === _lastQuotesHTMLHash) {
+        return;
+    }
+    _lastQuotesHTMLHash = currentHash;
 
     panel.innerHTML = selectedCoins.map(coin => {
         const currentPrice = parseFloat(currentPrices[coin] || 0);
@@ -427,14 +461,13 @@ export function startPriceTicker() {
                 //console.log(`[ChartUpdate] scatterChart exists: ${!!scatterChart}, canvas exists: ${!!canvas}, canvas in DOM: ${canvas?.isConnected}, section display: ${section?.style.display}, chart.ctx: ${!!scatterChart?.ctx}, chart.canvas: ${!!scatterChart?.canvas}`);
 
                 // Only update if chart is valid and visible
-                if (scatterChart.ctx && scatterChart.canvas && canvas && canvas.isConnected && section && section.style.display !== 'none') {
+                const isChartVisible = section && section.style.display !== 'none' && canvas?.offsetParent !== null;
+                if (scatterChart.ctx && scatterChart.canvas && canvas && canvas.isConnected && isChartVisible) {
                     try {
-                        scatterChart.update(); // Use default animation mode to ensure full redraw if needed
+                        scatterChart.update('none'); // Use 'none' for instant update without animation
                     } catch (e) {
                         console.warn('[ChartUpdate] scatterChart.update() failed:', e.message);
                     }
-                } else {
-                    console.warn('[ChartUpdate] Skipping scatterChart update - chart invalid or hidden');
                 }
             }
 
@@ -478,14 +511,13 @@ export function startPriceTicker() {
                 //console.log(`[ChartUpdate] liqChart exists: ${!!liqChart}, canvas exists: ${!!liqCanvas}, canvas in DOM: ${liqCanvas?.isConnected}, section display: ${liqSection?.style.display}, chart.ctx: ${!!liqChart?.ctx}, chart.canvas: ${!!liqChart?.canvas}`);
 
                 // Only update if chart is valid and visible
-                if (liqChart.ctx && liqChart.canvas && liqCanvas && liqCanvas.isConnected && liqSection && liqSection.style.display !== 'none') {
+                const isLiqVisible = liqSection && liqSection.style.display !== 'none' && liqCanvas?.offsetParent !== null;
+                if (liqChart.ctx && liqChart.canvas && liqCanvas && liqCanvas.isConnected && isLiqVisible) {
                     try {
-                        liqChart.update(); // Use default animation mode
+                        liqChart.update('none'); // Use 'none' for instant update
                     } catch (e) {
                         console.warn('[ChartUpdate] liqChart.update() failed:', e.message);
                     }
-                } else {
-                    console.warn('[ChartUpdate] Skipping liqChart update - chart invalid or hidden');
                 }
             }
 

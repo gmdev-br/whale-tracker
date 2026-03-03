@@ -15,10 +15,9 @@ export class VirtualScroll {
         this.tbody = options.tbody;
         this.data = [];
         this.scrollTop = 0;
-        this.visibleStart = 0;
-        this.visibleEnd = 0;
         this.totalHeight = 0;
         this.renderedRows = new Map(); // Track rendered rows by index
+        this.renderedHtmlMap = new Map(); // PERFORMANCE: Cache HTML to avoid redundant parsing
 
         if (!this.tbody) {
             console.error('VirtualScroll: tbody element is required');
@@ -190,9 +189,15 @@ export class VirtualScroll {
             const tr = existingRows[i];
 
             if (rowData) {
-                // We extract just the inner content of the tr string (everything between <tr...> and </tr>)
                 const fullHtml = rowData.html || this.renderRow(rowData, rowIndex);
 
+                // PERFORMANCE: Skip parsing and DOM comparison if HTML hasn't changed for this index
+                if (!forceUpdate && this.renderedHtmlMap.get(rowIndex) === fullHtml && tr.dataset.sourceIndex === String(rowIndex)) {
+                    rowIndex++;
+                    continue;
+                }
+
+                // We extract just the inner content of the tr string (everything between <tr...> and </tr>)
                 // Use robust DOM parsing instead of brittle regex
                 tempTemplate.innerHTML = fullHtml.trim();
                 const sourceTr = tempTemplate.content.firstElementChild;
@@ -209,13 +214,15 @@ export class VirtualScroll {
                         tr.innerHTML = newInnerHtml;
                     }
 
-                    // Track index
+                    // Track index and cache HTML
                     tr.dataset.sourceIndex = String(rowIndex);
+                    this.renderedHtmlMap.set(rowIndex, fullHtml);
                 } else {
                     // Fallback for non-TR strings (e.g. just inner content)
                     if (forceUpdate || tr.dataset.sourceIndex !== String(rowIndex)) {
                         tr.innerHTML = fullHtml;
                         tr.dataset.sourceIndex = String(rowIndex);
+                        this.renderedHtmlMap.set(rowIndex, fullHtml);
                     }
                 }
             }
