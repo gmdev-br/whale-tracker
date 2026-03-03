@@ -321,6 +321,9 @@ export function enableVirtualScroll(tbodyId = 'positionsTableBody', options = {}
             if (virtualScroll) {
                 virtualScroll.rowHeight = height;
                 virtualScroll.rowHeightMeasured = false;
+                virtualScroll.totalHeight = virtualScroll.data.length * height;
+                virtualScroll.updateVisibleRange();
+                virtualScroll.render(true);
             }
         },
         scrollToIndex: (index) => {

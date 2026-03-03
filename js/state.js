@@ -114,6 +114,7 @@ let maxConcurrency = 8;
 let renderPending = false;
 let lastSaveTime = 0;
 let isZenMode = false;
+let autoFitText = false; // Add autoFitText to state
 
 // Getters
 export const getState = () => ({
@@ -168,7 +169,8 @@ export const getState = () => ({
     whaleMeta,
     isZenMode,
     showLiquidationSymbols,
-    liquidationZoneColors
+    liquidationZoneColors,
+    autoFitText
 });
 
 // Setters
@@ -226,7 +228,8 @@ export const setState = (updates) => {
         whaleMeta,
         isZenMode,
         showLiquidationSymbols,
-        liquidationZoneColors
+        liquidationZoneColors,
+        autoFitText
     }, updates);
 };
 
@@ -291,6 +294,7 @@ export const setIsZenMode = (value) => { isZenMode = value; };
 export const setShowLiquidationSymbols = (value) => { showLiquidationSymbols = value; };
 export const setWhaleMeta = (value) => { whaleMeta = value; };
 export const setLastSeenAccountValues = (value) => { lastSeenAccountValues = value; };
+export const setAutoFitText = (value) => { autoFitText = !!value; };
 
 // Getters for common state access
 export const getAllRows = () => allRows;
@@ -345,6 +349,7 @@ export const getLiquidationMaxPriceFull = () => liquidationMaxPriceFull;
 export const getUseCompactFormat = () => useCompactFormat;
 export const getLiquidationZoneColors = () => liquidationZoneColors;
 export const getLiquidationHighlightColor = () => liquidationHighlightColor;
+export const getAutoFitText = () => autoFitText;
 
 export const getTooltipDelay = () => tooltipDelay;
 export const setTooltipDelay = (val) => {

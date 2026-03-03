@@ -8,11 +8,11 @@ import {
     getColumnOrder, getVisibleColumns, getRankingLimit, getColorMaxLev,
     getChartHighLevSplit, getChartHeight, getLiqChartHeight, getSavedScatterState,
     getSavedLiqState, getColumnWidths, getColumnWidth, getActiveCurrency, getActiveEntryCurrency, getDecimalPlaces, getLeverageColors, getFontSize, getFontSizeKnown, getRowHeight, setRowHeight, getGridSpacing, getMinBtcVolume,
-    getAggInterval, getLiquidationTableHeight, getAggVolumeUnit, getLiquidationMinPriceFull, getLiquidationMaxPriceFull, getUseCompactFormat, getIsZenMode, getLastSeenAccountValues, getShowLiquidationSymbols, getLiquidationZoneColors, getLiquidationHighlightColor, getTooltipDelay,
+    getAggInterval, getLiquidationTableHeight, getAggVolumeUnit, getLiquidationMinPriceFull, getLiquidationMaxPriceFull, getUseCompactFormat, getIsZenMode, getLastSeenAccountValues, getShowLiquidationSymbols, getLiquidationZoneColors, getLiquidationHighlightColor, getTooltipDelay, getAutoFitText,
     getLiquidationMinPriceSummary, getLiquidationMaxPriceSummary, getLiquidationVolumeUnitSummary,
     getAggColumnOrder, getAggColumnOrderResumida,
     setSortKey, setSortDir, setSavedScatterState, setSavedLiqState,
-    setColumnOrder, setVisibleColumns, setColumnWidths, setSelectedCoins, setRankingLimit, setColorMaxLev, setChartHighLevSplit, setChartMode, setBubbleScale, setBubbleOpacity, setLineThickness, setAggregationFactor, setPriceMode, setShowSymbols, setPriceUpdateInterval, setDecimalPlaces, setFontSize, setFontSizeKnown, setLeverageColors, setColumnWidth, setGridSpacing, setMinBtcVolume, setAggInterval, setLiquidationTableHeight, setAggVolumeUnit, setLiquidationMinPriceFull, setLiquidationMaxPriceFull, setUseCompactFormat, setIsZenMode, setLastSeenAccountValues, setShowLiquidationSymbols, setLiquidationZoneColors, setLiquidationHighlightColor, setTooltipDelay,
+    setColumnOrder, setVisibleColumns, setColumnWidths, setSelectedCoins, setRankingLimit, setColorMaxLev, setChartHighLevSplit, setChartMode, setBubbleScale, setBubbleOpacity, setLineThickness, setAggregationFactor, setPriceMode, setShowSymbols, setPriceUpdateInterval, setDecimalPlaces, setFontSize, setFontSizeKnown, setLeverageColors, setColumnWidth, setGridSpacing, setMinBtcVolume, setAggInterval, setLiquidationTableHeight, setAggVolumeUnit, setLiquidationMinPriceFull, setLiquidationMaxPriceFull, setUseCompactFormat, setIsZenMode, setLastSeenAccountValues, setShowLiquidationSymbols, setLiquidationZoneColors, setLiquidationHighlightColor, setTooltipDelay, setAutoFitText,
     setLiquidationMinPriceSummary, setLiquidationMaxPriceSummary, setLiquidationVolumeUnitSummary,
     setActiveCurrency, setActiveEntryCurrency, setAggColumnOrder, setAggColumnOrderResumida
 } from '../state.js';
@@ -46,7 +46,7 @@ export function saveSettings(getChartState = null, savedScatterState = null, sav
     console.log('[saveSettings] CALLED at', new Date().toLocaleTimeString());
     console.log('[saveSettings] immediate:', immediate);
     console.trace('[saveSettings] Stack trace:');
-    
+
     // Helper to get chart state
     function getChartStateHelper(chart) {
         if (!chart) return null;
@@ -128,7 +128,8 @@ export function saveSettings(getChartState = null, savedScatterState = null, sav
         aggZoneColors: getLiquidationZoneColors(),
         aggHighlightColor: getLiquidationHighlightColor(),
         lastSeenAccountValues: getLastSeenAccountValues(),
-        tooltipDelay: getTooltipDelay()
+        tooltipDelay: getTooltipDelay(),
+        autoFitText: getAutoFitText()
     };
 
     console.log('Saving currency settings:', {
@@ -145,7 +146,7 @@ export function saveSettings(getChartState = null, savedScatterState = null, sav
     console.log('Saving columnOrder:', JSON.stringify(settings.columnOrder));
     console.log('Saving aggColumnOrder:', JSON.stringify(settings.aggColumnOrder));
     console.log('Saving aggColumnOrderResumida:', JSON.stringify(settings.aggColumnOrderResumida));
-    
+
     if (immediate) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
         console.log('%c[saveSettings] ✓ Settings saved IMMEDIATELY', 'color: #4CAF50; font-weight: bold;');
@@ -161,7 +162,7 @@ export function saveSettings(getChartState = null, savedScatterState = null, sav
 export function loadSettings() {
     console.log(`%c[loadSettings] ════════════════════════════════════════`, 'background: #FF9800; color: white; font-weight: bold;');
     console.log('[loadSettings] CALLED at', new Date().toLocaleTimeString());
-    
+
     const saved = localStorage.getItem(STORAGE_KEY);
     let s = null;
 
@@ -636,6 +637,11 @@ export function loadSettings() {
     }
     if (s.lastSeenAccountValues) {
         setLastSeenAccountValues(s.lastSeenAccountValues);
+    }
+    if (s.autoFitText !== undefined) {
+        setAutoFitText(s.autoFitText);
+        const checkbox = document.getElementById('autoFitTextToggle');
+        if (checkbox) checkbox.checked = s.autoFitText;
     }
 
     // ═══════════════════════════════════════════════════════════

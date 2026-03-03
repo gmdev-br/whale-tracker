@@ -6,8 +6,9 @@ import {
     getAllRows, getDisplayedRows, getSelectedCoins, getActiveCurrency,
     getActiveEntryCurrency, getShowSymbols, getSortKey, getSortDir,
     getVisibleColumns, getColumnOrder, setDisplayedRows, getCurrentPrices, getFxRates, getChartHighLevSplit, getFontSize, getFontSizeKnown, getDecimalPlaces, getMinBtcVolume, getScanning,
-    getWhaleMeta, getPriceUpdateVersion, getRowHeight, getColumnWidth, getColumnWidths
+    getWhaleMeta, getPriceUpdateVersion, getRowHeight, getColumnWidth, getColumnWidths, getAutoFitText
 } from '../state.js';
+import { adjustFontSizeToFit } from '../utils/ui.js';
 import { convertToActiveCcy } from '../utils/currency.js';
 import { fmt, fmtUSD, fmtAddr, fmtCcy } from '../utils/formatters.js';
 import { getCorrelatedPrice, getCorrelatedEntry } from '../utils/currency.js';
@@ -15,7 +16,7 @@ import { CURRENCY_META } from '../config.js';
 import { saveSettings } from '../storage/settings.js';
 import { renderScatterPlot } from '../charts/scatter.js';
 import { renderLiqScatterPlot } from '../charts/liquidation.js';
-import { setupColumnDragAndDrop, applyColumnWidths, setupColumnResizing } from '../events/handlers.js';
+import { setupColumnDragAndDrop, applyColumnWidths, setupColumnResizing, setupVerticalResizing } from '../events/handlers.js';
 import { updateRankingPanel } from './panels.js';
 import { applyColumnWidth } from './columnWidth.js';
 import { debounce, Cache, adaptiveDebounce } from '../utils/performance.js';
@@ -892,11 +893,15 @@ function _renderTableInternal() {
             const usdSym = showSymbols ? '$' : '';
 
             // Cell Renderers Map
+            const autoFit = getAutoFitText();
+            const autoFitClass = autoFit ? 'auto-fit-active' : '';
+            const wrap = (content, extraClass = '') => `<div class="cell-content ${extraClass}">${content}</div>`;
+
             const cells = {
-                'col-num': `<td class="muted col-num" style="font-size:11px">${i + 1}</td>`,
-                'col-address': `<td class="col-address ${levClass}" style="${rowFontStyle}">
-                <div class="addr-cell">
-                    ${isHighlighted ? `<span class="addr-avatar-star ${levClass}">★</span>` : `<div class="addr-avatar">${(meta.displayName || r.address).slice(0, 2).toUpperCase()}</div>`}
+                'col-num': `<td class="col-num ${autoFitClass}" style="${rowFontStyle}">${wrap(r.index + 1)}</td>`,
+                'col-address': `<td class="col-address ${autoFitClass}" style="${rowFontStyle}">
+                <div class="cell-content">
+                    <div class="addr-icon">${meta.displayName ? '⭐' : '🐋'}</div>
                     <div>
                         <a class="addr-link" href="https://app.hyperliquid.xyz/explorer/address/${r.address}" target="_blank">
                             <div class="addr-text">${fmtAddr(r.address)}</div>
@@ -905,20 +910,20 @@ function _renderTableInternal() {
                     </div>
                 </div>
             </td>`,
-                'col-coin': `<td class="col-coin" style="${rowFontStyle}">
-                <span class="coin-badge ${levClass}">${r.coin} ${side === 'long' ? '▲' : '▼'}</span>
+                'col-coin': `<td class="col-coin ${autoFitClass}" style="${rowFontStyle}">
+                ${wrap(`<span class="coin-badge ${levClass}">${r.coin} ${side === 'long' ? '▲' : '▼'}</span>`)}
             </td>`,
-                'col-szi': `<td class="mono col-szi ${levClass}" style="${rowFontStyle}">${sziStr}</td>`,
-                'col-leverage': `<td class="col-leverage" style="${rowFontStyle}"><span class="lev-badge ${levClass}">${levLabel}</span></td>`,
-                'col-positionValue': `<td class="mono col-positionValue ${levClass}" style="${rowFontStyle}">${usdSym}${fmt(r.positionValue)}</td>`,
-                'col-valueCcy': `<td class="mono col-valueCcy ${levClass}" style="${isHighlighted ? 'font-weight:600;' : ''}${rowFontStyle}">${ccyStr}</td>`,
-                'col-entryPx': `<td class="mono col-entryPx ${levClass}" style="${rowFontStyle}">${r.entryPx.toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>`,
-                'col-entryCcy': `<td class="mono col-entryCcy ${levClass}" style="${isHighlighted ? 'font-weight:600;' : ''}${rowFontStyle}">${entStr}</td>`,
-                'col-unrealizedPnl': `<td class="mono col-unrealizedPnl ${pnlClass}" style="${isHighlighted ? 'font-weight:600;' : ''}${rowFontStyle}">${fmtUSD(r.unrealizedPnl)}</td>`,
-                'col-funding': `<td class="mono col-funding ${fundClass}" style="${rowFontStyle}">${fmtUSD(r.funding)}</td>`,
-                'col-liqPx': `<td class="mono col-liqPx ${levClass}" style="${isHighlighted ? 'font-weight:600;' : ''}${rowFontStyle}">${liqPriceFormatted}</td>`,
-                'col-distToLiq': `<td class="col-distToLiq ${levClass}" style="${rowFontStyle}">${distHtml}</td>`,
-                'col-accountValue': `<td class="mono col-accountValue ${levClass}" style="${rowFontStyle}">${usdSym}${fmt(meta.accountValue || 0)}</td>`
+                'col-szi': `<td class="mono col-szi ${levClass} ${autoFitClass}" style="${rowFontStyle}">${wrap(sziStr)}</td>`,
+                'col-leverage': `<td class="col-leverage ${autoFitClass}" style="${rowFontStyle}">${wrap(`<span class="lev-badge ${levClass}">${levLabel}</span>`)}</td>`,
+                'col-positionValue': `<td class="mono col-positionValue ${levClass} ${autoFitClass}" style="${rowFontStyle}">${wrap(`${usdSym}${fmt(r.positionValue)}`)}</td>`,
+                'col-valueCcy': `<td class="mono col-valueCcy ${levClass} ${autoFitClass}" style="${isHighlighted ? 'font-weight:600;' : ''}${rowFontStyle}">${wrap(ccyStr)}</td>`,
+                'col-entryPx': `<td class="mono col-entryPx ${levClass} ${autoFitClass}" style="${rowFontStyle}">${wrap(r.entryPx.toLocaleString('en-US', { maximumFractionDigits: 2 }))}</td>`,
+                'col-entryCcy': `<td class="mono col-entryCcy ${levClass} ${autoFitClass}" style="${isHighlighted ? 'font-weight:600;' : ''}${rowFontStyle}">${wrap(entStr)}</td>`,
+                'col-unrealizedPnl': `<td class="mono col-unrealizedPnl ${pnlClass} ${autoFitClass}" style="${isHighlighted ? 'font-weight:600;' : ''}${rowFontStyle}">${wrap(fmtUSD(r.unrealizedPnl))}</td>`,
+                'col-funding': `<td class="mono col-funding ${fundClass} ${autoFitClass}" style="${rowFontStyle}">${wrap(fmtUSD(r.funding))}</td>`,
+                'col-liqPx': `<td class="mono col-liqPx ${levClass} ${autoFitClass}" style="${isHighlighted ? 'font-weight:600;' : ''}${rowFontStyle}">${wrap(liqPriceFormatted)}</td>`,
+                'col-distToLiq': `<td class="col-distToLiq ${levClass} ${autoFitClass}" style="${rowFontStyle}">${wrap(distHtml)}</td>`,
+                'col-accountValue': `<td class="mono col-accountValue ${levClass} ${autoFitClass}" style="${rowFontStyle}">${wrap(`${usdSym}${fmt(meta.accountValue || 0)}`)}</td>`
             };
 
             // Filter cells based on visible columns
@@ -950,6 +955,26 @@ function _renderTableInternal() {
         // Render using virtual scroll or traditional method
         // Override row renderer and update data
         virtualScrollManager.renderRow = rowRenderer;
+
+        // Hook for font size adjustments after virtual scroll renders
+        const originalOnRender = virtualScrollManager.onRender;
+        virtualScrollManager.onRender = () => {
+            if (originalOnRender) originalOnRender();
+
+            if (getAutoFitText()) {
+                const tableBody = document.getElementById('positionsTableBody');
+                if (tableBody) {
+                    const cells = tableBody.querySelectorAll('td.auto-fit-active');
+                    cells.forEach(td => {
+                        const content = td.querySelector('.cell-content');
+                        if (content) {
+                            adjustFontSizeToFit(content, td);
+                        }
+                    });
+                }
+            }
+        };
+
         virtualScrollManager.setData(rows);
 
         // DEBUG: Update table rows count
@@ -964,9 +989,9 @@ function _renderTableInternal() {
         renderAggregationTableResumida(true);
 
         // Apply column widths after table is rendered
-        console.log(`%c[PERSISTENCE:RENDER] Calling applyColumnWidths()...`, 'color: #9C27B0;');
+        console.log(`% c[PERSISTENCE:RENDER] Calling applyColumnWidths()...`, 'color: #9C27B0;');
         applyColumnWidths();
-        console.log(`%c[PERSISTENCE:RENDER] applyColumnWidths() completed`, 'color: #9C27B0;');
+        console.log(`% c[PERSISTENCE:RENDER]applyColumnWidths() completed`, 'color: #9C27B0;');
 
         // Also apply the default column width (CSS variable)
         const columnWidth = getColumnWidth();
@@ -976,6 +1001,7 @@ function _renderTableInternal() {
         // Always try to setup resizing since table might be recreated
         setTimeout(() => {
             setupColumnResizing();
+            setupVerticalResizing();
         }, 100);
 
         // Always try to setup drag and drop - the function has its own guards
@@ -986,7 +1012,7 @@ function _renderTableInternal() {
             setupColumnDragAndDrop();
         }, 100);
 
-        console.log(`%c[PERSISTENCE:RENDER] ✓ RENDER COMPLETED`, 'background: #9C27B0; color: white; font-weight: bold;');
+        console.log(`% c[PERSISTENCE:RENDER] ✓ RENDER COMPLETED`, 'background: #9C27B0; color: white; font-weight: bold;');
     }
 }
 
@@ -1061,7 +1087,7 @@ export function updateTableDataOnly() {
     // Optimization: Build a Map for O(1) lookup
     const rowDataMap = new Map();
     displayedRows.forEach(r => {
-        rowDataMap.set(`${fmtAddr(r.address)}_${r.coin}`, r);
+        rowDataMap.set(`${fmtAddr(r.address)}_${r.coin} `, r);
     });
 
     // Validate headers are still attached to DOM
@@ -1119,7 +1145,7 @@ export function updateTableDataOnly() {
         if (!coin) return;
 
         // Find the matching row data using O(1) lookup
-        const rowData = rowDataMap.get(`${address}_${coin}`);
+        const rowData = rowDataMap.get(`${address}_${coin} `);
 
         if (!rowData) return;
 
@@ -1141,7 +1167,7 @@ export function updateTableDataOnly() {
         // Update position value cell
         const posValueCell = rowEl.querySelector('.col-positionValue');
         if (posValueCell) {
-            posValueCell.textContent = `${usdSym}${fmt(rowData.positionValue)}`;
+            posValueCell.textContent = `${usdSym}${fmt(rowData.positionValue)} `;
         }
 
         // Update valueCcy cell
@@ -1168,7 +1194,7 @@ export function updateTableDataOnly() {
         const pnlCell = rowEl.querySelector('.col-unrealizedPnl');
         if (pnlCell) {
             pnlCell.textContent = fmtUSD(rowData.unrealizedPnl);
-            pnlCell.className = `mono col-unrealizedPnl ${pnlClass}`;
+            pnlCell.className = `mono col - unrealizedPnl ${pnlClass} `;
             if (isHighlighted) {
                 pnlCell.style.fontWeight = '600';
             }
@@ -1178,7 +1204,7 @@ export function updateTableDataOnly() {
         const fundingCell = rowEl.querySelector('.col-funding');
         if (fundingCell) {
             fundingCell.textContent = fmtUSD(rowData.funding);
-            fundingCell.className = `mono col-funding ${fundClass}`;
+            fundingCell.className = `mono col - funding ${fundClass} `;
         }
 
         // Update liqPx cell
@@ -1201,8 +1227,8 @@ export function updateTableDataOnly() {
 
             const pctSpan = distCell.querySelector('.liq-pct');
             if (pctSpan) {
-                pctSpan.textContent = `${pct.toFixed(0)}%`;
-                pctSpan.className = `liq-pct ${barClass === 'safe' ? 'green' : barClass === 'warn' ? '' : 'red'}`;
+                pctSpan.textContent = `${pct.toFixed(0)}% `;
+                pctSpan.className = `liq - pct ${barClass === 'safe' ? 'green' : barClass === 'warn' ? '' : 'red'} `;
                 if (barClass === 'warn') {
                     pctSpan.style.color = 'var(--orange)';
                 } else {
@@ -1217,15 +1243,15 @@ export function updateTableDataOnly() {
 
             const liqBar = distCell.querySelector('.liq-bar');
             if (liqBar) {
-                liqBar.style.width = `${barW}%`;
-                liqBar.className = `liq-bar ${barClass}`;
+                liqBar.style.width = `${barW}% `;
+                liqBar.className = `liq - bar ${barClass} `;
             }
         }
 
         // Update accountValue cell
         const accValueCell = rowEl.querySelector('.col-accountValue');
         if (accValueCell) {
-            accValueCell.textContent = `${usdSym}${fmt(meta.accountValue || 0)}`;
+            accValueCell.textContent = `${usdSym}${fmt(meta.accountValue || 0)} `;
         }
     });
 
@@ -1262,7 +1288,7 @@ export function updateTablePriceData() {
     // Optimization: Build a Map for O(1) lookup
     const rowDataMap = new Map();
     displayedRows.forEach(r => {
-        rowDataMap.set(`${fmtAddr(r.address)}_${r.coin}`, r);
+        rowDataMap.set(`${fmtAddr(r.address)}_${r.coin} `, r);
     });
 
     const table = document.getElementById('positionsTable');
@@ -1301,7 +1327,7 @@ export function updateTablePriceData() {
         if (!coin) return;
 
         // Find the matching row data using O(1) lookup
-        const rowData = rowDataMap.get(`${address}_${coin}`);
+        const rowData = rowDataMap.get(`${address}_${coin} `);
 
         if (!rowData) return;
 
@@ -1323,7 +1349,7 @@ export function updateTablePriceData() {
         // Update position value cell
         const posValueCell = rowEl.querySelector('.col-positionValue');
         if (posValueCell) {
-            posValueCell.textContent = `${usdSym}${fmt(rowData.positionValue)}`;
+            posValueCell.textContent = `${usdSym}${fmt(rowData.positionValue)} `;
         }
 
         // Update valueCcy cell
@@ -1350,7 +1376,7 @@ export function updateTablePriceData() {
         const pnlCell = rowEl.querySelector('.col-unrealizedPnl');
         if (pnlCell) {
             pnlCell.textContent = fmtUSD(rowData.unrealizedPnl);
-            pnlCell.className = `mono col-unrealizedPnl ${pnlClass}`;
+            pnlCell.className = `mono col - unrealizedPnl ${pnlClass} `;
             if (isHighlighted) {
                 pnlCell.style.fontWeight = '600';
             }
@@ -1360,7 +1386,7 @@ export function updateTablePriceData() {
         const fundingCell = rowEl.querySelector('.col-funding');
         if (fundingCell) {
             fundingCell.textContent = fmtUSD(rowData.funding);
-            fundingCell.className = `mono col-funding ${fundClass}`;
+            fundingCell.className = `mono col - funding ${fundClass} `;
         }
 
         // Update liqPx cell
@@ -1383,8 +1409,8 @@ export function updateTablePriceData() {
 
             const pctSpan = distCell.querySelector('.liq-pct');
             if (pctSpan) {
-                pctSpan.textContent = `${pct.toFixed(0)}%`;
-                pctSpan.className = `liq-pct ${barClass === 'safe' ? 'green' : barClass === 'warn' ? '' : 'red'}`;
+                pctSpan.textContent = `${pct.toFixed(0)}% `;
+                pctSpan.className = `liq - pct ${barClass === 'safe' ? 'green' : barClass === 'warn' ? '' : 'red'} `;
                 if (barClass === 'warn') {
                     pctSpan.style.color = 'var(--orange)';
                 } else {
@@ -1399,15 +1425,15 @@ export function updateTablePriceData() {
 
             const liqBar = distCell.querySelector('.liq-bar');
             if (liqBar) {
-                liqBar.style.width = `${barW}%`;
-                liqBar.className = `liq-bar ${barClass}`;
+                liqBar.style.width = `${barW}% `;
+                liqBar.className = `liq - bar ${barClass} `;
             }
         }
 
         // Update accountValue cell
         const accValueCell = rowEl.querySelector('.col-accountValue');
         if (accValueCell) {
-            accValueCell.textContent = `${usdSym}${fmt(meta.accountValue || 0)}`;
+            accValueCell.textContent = `${usdSym}${fmt(meta.accountValue || 0)} `;
         }
     });
 
@@ -1447,7 +1473,7 @@ export async function diagnoseColumnState() {
             const th = cachedHeaders[key];
             const isConnected = th.isConnected || document.body.contains(th);
             const width = th.style.width;
-            console.log(`  - ${key}: inDOM=${isConnected}, width=${width}`);
+            console.log(`  - ${key}: inDOM = ${isConnected}, width = ${width} `);
         });
     } else {
         console.log('  - cachedHeaders is NULL');
@@ -1472,7 +1498,7 @@ export async function diagnoseColumnState() {
                 const id = th.id || 'no-id';
                 const width = th.style.width;
                 const rect = th.getBoundingClientRect();
-                console.log(`  [${i}] ${id}: width=${width}, actual=${rect.width.toFixed(1)}px`);
+                console.log(`  [${i}] ${id}: width = ${width}, actual = ${rect.width.toFixed(1)} px`);
             });
         } else {
             console.log('%cDOM Headers: Header row not found!', 'color: red;');

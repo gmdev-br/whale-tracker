@@ -43,7 +43,7 @@ import {
     updateLiqChartHeight, onCurrencyChange, openColumnCombobox, closeColumnComboboxDelayed,
     renderColumnDropdown as renderColumnDropdownFn, toggleColumn as toggleColumnFn, showAllColumns as showAllColumnsFn, hideAllColumns as hideAllColumnsFn, updateColumnSelectDisplay, applyColumnOrder,
     applyColumnWidths, applyColumnVisibility, toggleShowSymbols, toggleShowAggSymbols, updatePriceInterval, updateDecimalPlaces, updateFontSize, updateFontSizeKnown, updateRowHeight, updateLeverageColors, updateGridSpacing, updateMinBtcVolume, updateAggInterval, updateAggTableHeight, updateAggVolumeUnit, scrollToCurrentPrice,
-    toggleZenMode, updateAggZoneColors, updateAggHighlightColor, updateCompactFormat
+    toggleZenMode, updateAggZoneColors, updateAggHighlightColor, updateCompactFormat, handleAutoFitTextToggle
 } from './handlers.js';
 import { initColumnWidthControl, applyColumnWidth } from '../ui/columnWidth.js';
 import { setWindow, setStatus, setProgress } from '../ui/status.js';
@@ -378,6 +378,12 @@ function setupEventListeners() {
     const showAggSymbolsDrawer = getElement('showAggSymbolsDrawer');
     if (showAggSymbolsDrawer) {
         eventManager.on(showAggSymbolsDrawer, 'change', toggleShowAggSymbols);
+    }
+
+    // Auto-fit text toggle
+    const autoFitTextToggle = getElement('autoFitTextToggle');
+    if (autoFitTextToggle) {
+        eventManager.on(autoFitTextToggle, 'change', handleAutoFitTextToggle);
     }
 
     // Aggregation color pickers - use getElement and eventManager
@@ -737,15 +743,15 @@ function setupResizable(element, callback) {
         resizer.classList.add('active');
         element.classList.add('resizing');
         document.body.style.cursor = 'ns-resize';
-        
+
         // Disable chart responsiveness during resize to prevent intermediate redraws
         if (element.id === 'chart-section' || element.id === 'liq-chart-section') {
-            const chart = element.id === 'chart-section' 
+            const chart = element.id === 'chart-section'
                 ? (window.getScatterChart ? window.getScatterChart() : null)
                 : (window.getLiqChartInstance ? window.getLiqChartInstance() : null);
             if (chart) chart.options.responsive = false;
         }
-        
+
         e.preventDefault();
     });
 
@@ -766,7 +772,7 @@ function setupResizable(element, callback) {
 
         // Re-enable responsiveness
         if (element.id === 'chart-section' || element.id === 'liq-chart-section') {
-            const chart = element.id === 'chart-section' 
+            const chart = element.id === 'chart-section'
                 ? (window.getScatterChart ? window.getScatterChart() : null)
                 : (window.getLiqChartInstance ? window.getLiqChartInstance() : null);
             if (chart) chart.options.responsive = true;
@@ -803,7 +809,7 @@ function initializePanels() {
 async function loadInitialState() {
     console.log('%c[INIT] ═══ loadInitialState STARTING ═══', 'background: #2196F3; color: white; font-weight: bold; font-size: 14px;');
     console.log('[INIT] Timestamp:', new Date().toISOString());
-    
+
     // ═══════════════════════════════════════════════════════════
     // CRITICAL FIX: Remove any existing drag-and-drop marker from bfcache
     // The bfcache (back-forward cache) may preserve the .dragging-initialized

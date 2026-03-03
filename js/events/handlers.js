@@ -307,7 +307,8 @@ import {
     getColumnOrder, getVisibleColumns, setPriceUpdateInterval, setActiveCurrency,
     setActiveEntryCurrency, setDecimalPlaces, setFontSize, setFontSizeKnown, setLeverageColors, setGridSpacing, setMinBtcVolume, getMinBtcVolume, setAggInterval, setLiquidationTableHeight, setAggVolumeUnit, getAggVolumeUnit, setIsZenMode, getIsZenMode,
     setShowLiquidationSymbols, getShowLiquidationSymbols, setLiquidationZoneColors, getLiquidationZoneColors, setLiquidationHighlightColor, getLiquidationHighlightColor, setTooltipDelay,
-    getColumnWidths, setColumnWidths, setRowHeight, setUseCompactFormat, getUseCompactFormat,
+    getColumnWidths, setColumnWidths, getRowHeight, setRowHeight, setUseCompactFormat, getUseCompactFormat,
+    getAutoFitText, setAutoFitText,
     getAggColumnOrder, setAggColumnOrder, getAggColumnOrderResumida, setAggColumnOrderResumida
 } from '../state.js';
 import { COLUMN_DEFS } from '../config.js';
@@ -1021,6 +1022,24 @@ export function setupColumnResizing() {
     });
 }
 
+/**
+ * Setup vertical resizers for rows
+ */
+export function setupVerticalResizing() {
+    const resizers = document.querySelectorAll('.resizer-v');
+
+    resizers.forEach(resizer => {
+        if (resizer.dataset.initialized) return;
+
+        resizer.dataset.initialized = 'true';
+        resizer.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            initResizeV(e);
+        });
+        resizer.addEventListener('click', e => e.stopPropagation());
+    });
+}
+
 function initResize(e, tableType) {
     e.preventDefault();
 
@@ -1092,6 +1111,45 @@ function initResize(e, tableType) {
         saveSettings(null, null, null, null, null, true); // Save immediately for column resize
         console.log(`%c[PERSISTENCE:RESIZE] saveSettings() called with immediate=true`, 'color: #ff9800; font-weight: bold;');
         console.log(`%c[PERSISTENCE:RESIZE] ✓ DONE`, 'background: #ff9800; color: white; font-weight: bold;');
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+}
+
+function initResizeV(e) {
+    e.preventDefault();
+
+    const startY = e.clientY;
+    const startHeight = getRowHeight();
+
+    document.body.classList.add('resizing-v');
+
+    const onMouseMove = (e) => {
+        window.requestAnimationFrame(() => {
+            const diffY = e.clientY - startY;
+            let newHeight = startHeight + diffY;
+
+            // Apply limits (e.g., 24px to 100px)
+            newHeight = Math.max(24, Math.min(100, newHeight));
+
+            setRowHeight(newHeight);
+
+            // Directly update CSS variable for immediate feedback
+            document.documentElement.style.setProperty('--row-height', `${newHeight}px`);
+        });
+    };
+
+    const onMouseUp = () => {
+        document.body.classList.remove('resizing-v');
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+
+        // Save settings and trigger re-render
+        saveSettings(null, null, null, null, null, true);
+
+        // Re-render tables to update virtual scroll managers
+        import('../ui/table.js').then(m => m.renderTable());
     };
 
     document.addEventListener('mousemove', onMouseMove);
@@ -1618,4 +1676,21 @@ export function applyColumnWidths() {
 
     console.log('[applyColumnWidths] ✓ DONE');
     console.log('[applyColumnWidths] ════════════════════════════════════════');
+}
+
+/**
+     * Handles the auto-fit text toggle.
+     * @param {Event} e - The change event.
+     */
+export function handleAutoFitTextToggle(e) {
+    const isEnabled = e.target.checked;
+    setAutoFitText(isEnabled);
+    saveSettings();
+
+    // Re-render main table
+    renderTable();
+
+    // Re-render aggregation tables
+    renderAggregationTable(true);
+    renderAggregationTableResumida(true);
 }

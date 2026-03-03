@@ -2,7 +2,8 @@
 // LIQUID GLASS — Aggregation Table
 // ═════════════════════════════════════════════
 
-import { getDisplayedRows, getCurrentPrices, getFxRates, getActiveEntryCurrency, getAggInterval, getAggVolumeUnit, getShowLiquidationSymbols, getLiquidationZoneColors, getLiquidationHighlightColor, getDecimalPlaces, getTooltipDelay, getLiquidationMinPriceFull, getLiquidationMaxPriceFull, setLiquidationMinPriceFull, setLiquidationMaxPriceFull, setAggVolumeUnit, setAggInterval, getLiquidationMinPriceSummary, getLiquidationMaxPriceSummary, getLiquidationVolumeUnitSummary, setLiquidationMinPriceSummary, setLiquidationMaxPriceSummary, setLiquidationVolumeUnitSummary, getAggColumnOrder, getAggColumnOrderResumida } from '../state.js';
+import { getDisplayedRows, getCurrentPrices, getFxRates, getActiveEntryCurrency, getAggInterval, getAggVolumeUnit, getShowLiquidationSymbols, getLiquidationZoneColors, getLiquidationHighlightColor, getDecimalPlaces, getTooltipDelay, getLiquidationMinPriceFull, getLiquidationMaxPriceFull, setLiquidationMinPriceFull, setLiquidationMaxPriceFull, setAggVolumeUnit, setAggInterval, getLiquidationMinPriceSummary, getLiquidationMaxPriceSummary, getLiquidationVolumeUnitSummary, setLiquidationMinPriceSummary, setLiquidationMaxPriceSummary, setLiquidationVolumeUnitSummary, getAggColumnOrder, getAggColumnOrderResumida, getRowHeight, getAutoFitText } from '../state.js';
+import { adjustFontSizeToFit } from '../utils/ui.js';
 import { getCorrelatedEntry, getCorrelatedPrice } from '../utils/currency.js';
 import { enableVirtualScroll } from '../utils/virtualScroll.js';
 import { saveSettings } from '../storage/settings.js';
@@ -199,13 +200,13 @@ function renderAggregationTableBase(options = {}) {
         bandArray = bandArray.filter(b => {
             // Remove vácuos
             if (b.isEmpty) return false;
-            
+
             // Condição atual: intensidade >= MÉDIA
             const hasIntensity = b.notionalLong + b.notionalShort >= 10_000_000;
-            
+
             // Nova condição: volume de liquidação significantivo
             const hasLiquidation = b.liqVolLong >= 10_000_000 || b.liqVolShort >= 10_000_000;
-            
+
             // Mostra se tiver intensidade OU liquidação significativa
             return hasIntensity || hasLiquidation;
         });
@@ -259,8 +260,13 @@ function renderAggregationTableBase(options = {}) {
     // Render table rows
     const currentBtcPos = btcPrice > 0 ? btcPrice : 0;
 
+    const rowHeight = getRowHeight();
+
     if (!state.virtualScrollManager) {
-        state.virtualScrollManager = enableVirtualScroll(tableBodyId, { threshold: 40, rowHeight: 36 });
+        state.virtualScrollManager = enableVirtualScroll(tableBodyId, { threshold: 40, rowHeight: rowHeight });
+    } else {
+        // Update row height if it changed
+        state.virtualScrollManager.rowHeight = rowHeight;
     }
 
     const rowRenderer = createRowRenderer({
@@ -274,18 +280,41 @@ function renderAggregationTableBase(options = {}) {
         btcPrice,
         aggVolumeUnit,
         currentBtcPos,
-        isResumida
+        isResumida,
+        rowHeight,
+        autoFit: getAutoFitText()
     });
 
     state.currentPriceRangeIndex = bandArray.findIndex(b => currentBtcPos >= b.faixaDe && currentBtcPos < b.faixaAte);
 
     state.virtualScrollManager.renderRow = rowRenderer;
+
+    // Hook for font size adjustments after virtual scroll renders
+    const originalOnRender = state.virtualScrollManager.onRender;
+    state.virtualScrollManager.onRender = () => {
+        if (originalOnRender) originalOnRender();
+
+        if (getAutoFitText()) {
+            const tableBody = document.getElementById(tableBodyId);
+            if (tableBody) {
+                const cells = tableBody.querySelectorAll('td.auto-fit-active');
+                cells.forEach(td => {
+                    const content = td.querySelector('.cell-content');
+                    if (content) {
+                        adjustFontSizeToFit(content, td);
+                    }
+                });
+            }
+        }
+    };
+
     state.virtualScrollManager.setData(bandArray);
 
     // Setup column resizing for aggregation tables after render (using cached import)
-    getHandlersModule().then(({ setupColumnResizing, applyColumnWidths }) => {
+    getHandlersModule().then(({ setupColumnResizing, applyColumnWidths, setupVerticalResizing }) => {
         try {
             setupColumnResizing();
+            setupVerticalResizing();
             applyColumnWidths();
         } catch (error) {
             console.error('Erro ao configurar redimensionamento de colunas:', error);
@@ -538,7 +567,7 @@ function renderStatsBar(statsBarId, totalLongNotional, totalShortNotional, posCo
  * Create a row renderer function with captured context
  */
 function createRowRenderer(context) {
-    const { aggZoneColors, aggHighlightColor, showAggSymbols, decimalPlaces, activeEntryCurrency, currentPrices, fxRates, btcPrice, aggVolumeUnit, currentBtcPos, isResumida } = context;
+    const { aggZoneColors, aggHighlightColor, showAggSymbols, decimalPlaces, activeEntryCurrency, currentPrices, fxRates, btcPrice, aggVolumeUnit, currentBtcPos, isResumida, rowHeight, autoFit } = context;
 
     return (b, _index) => {
         const totalNotional = b.notionalLong + b.notionalShort;
@@ -586,12 +615,12 @@ function createRowRenderer(context) {
         // Calculate zone type
         let zoneType = isEmpty ? 'Zona Vazia' : '—';
         let zoneColor = '#4b5563';
-        
+
         // Initialize styling variables BEFORE the if/else block to avoid TDZ error
         let totalNotionalColor = '#bfdbfe';
         let fwBold = '700';
         let fwSemi = '600';
-        
+
         if (!isEmpty) {
             const isForteTotal = totalNotional >= 30_000_000;
             const isForteZone = (domPct === 100 || isForteTotal) && totalNotional >= 10_000_000;
@@ -816,24 +845,27 @@ function createRowRenderer(context) {
             return `<span style="color:${color};${weight}">${fmtVal(val)}</span>`;
         };
 
+        const autoFitClass = autoFit ? 'auto-fit-active' : '';
+        const wrap = (content, extraClass = '') => `<div class="cell-content ${extraClass}">${content}</div>`;
+
         // Create cell map with th-id as key for reordering support
         const cellMap = {
-            'th-agg-faixaDe': `<td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; font-weight:${rangeWeight}; color:${rangeColor}; position: relative;">${starIndicator}${isCurrentPriceRange ? `<div style="font-size:10px; color:${aggHighlightColor}; position:absolute; top:-6px; right:4px; line-height:1; background:#0a0e1a; padding:0 2px; border-radius:2px;">$${btcPrice.toLocaleString()}</div>` : ''}$${b.faixaDe.toLocaleString()}</td>`,
-            'th-agg-faixaAte': `<td ${tooltipAttr} class="${tooltipClass} col-agg-range" style="font-family:monospace; color:${isRangeMultiple1000 || isRangeMultiple500 ? rangeColor : '#9ca3af'}; font-weight:${isRangeMultiple1000 ? '800' : (isRangeMultiple500 ? '700' : '400')}">$${b.faixaAte.toLocaleString()}</td>`,
-            'th-agg-liqPrice': `<td class="col-agg-liq" style="font-family:monospace; vertical-align:middle">${liqHtml}</td>`,
-            'th-agg-liqVolLong': `<td class="mono col-agg-val">${liqRenderer(b.liqVolLong, 'long')}</td>`,
-            'th-agg-liqVolShort': `<td class="mono col-agg-val">${liqRenderer(b.liqVolShort, 'short')}</td>`,
-            'th-agg-qtdLong': `<td class="col-agg-qty" style="color:${colorLong}; text-align:center">${formatQty(b.qtdLong)}</td>`,
-            'th-agg-notionalLong': `<td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="color:${colorLong}; font-family:monospace; font-weight:${b.notionalLong > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalLong)}</td>`,
-            'th-agg-qtdShort': `<td class="col-agg-qty" style="color:${colorShort}; text-align:center">${formatQty(b.qtdShort)}</td>`,
-            'th-agg-notionalShort': `<td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="color:${colorShort}; font-family:monospace; font-weight:${b.notionalShort > 30_000_000 ? '700' : '400'}">${formatVal(b.notionalShort)}</td>`,
-            'th-agg-totalNotional': `<td ${tooltipAttr} class="${tooltipClass} col-agg-val" style="font-family:monospace; color:${totalNotionalColor}; font-weight:${fwSemi}">${formatVal(totalNotional)}</td>`,
-            'th-agg-dominancia': `<td class="col-agg-dom" style="color:${domColor}; font-weight:${fwBold}">${domType}</td>`,
-            'th-agg-pctDom': `<td class="col-agg-pct" style="color:${domColor}; font-weight:${fwBold}">${domPct > 0 ? domPct.toFixed(1) + '%' : '—'}</td>`,
-            'th-agg-intensidade': `<td class="col-agg-int" style="color:${intColor}; font-size:11px; font-weight:${fwSemi}">${intType}</td>`,
-            'th-agg-tipoZona': `<td class="col-agg-zone" style="color:${zoneColor}; font-weight:${fwSemi}">${zoneType}</td>`,
-            'th-agg-ativosLong': `<td class="col-agg-assets" style="color:${colorLong}; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosLong).join(', ')}">${Array.from(b.ativosLong).join(', ')}</td>`,
-            'th-agg-ativosShort': `<td class="col-agg-assets" style="color:${colorShort}; font-size:11px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${Array.from(b.ativosShort).join(', ')}">${Array.from(b.ativosShort).join(', ')}</td>`
+            'th-agg-faixaDe': `<td ${tooltipAttr} class="${tooltipClass} col-agg-range ${autoFitClass}" style="font-family:monospace; font-weight:${rangeWeight}; color:${rangeColor}; position: relative;">${wrap(`${starIndicator}${isCurrentPriceRange ? `<div style="font-size:10px; color:${aggHighlightColor}; position:absolute; top:-6px; right:4px; line-height:1; background:#0a0e1a; padding:0 2px; border-radius:2px;">$${btcPrice.toLocaleString()}</div>` : ''}$${b.faixaDe.toLocaleString()}`)}</td>`,
+            'th-agg-faixaAte': `<td ${tooltipAttr} class="${tooltipClass} col-agg-range ${autoFitClass}" style="font-family:monospace; color:${isRangeMultiple1000 || isRangeMultiple500 ? rangeColor : '#9ca3af'}; font-weight:${isRangeMultiple1000 ? '800' : (isRangeMultiple500 ? '700' : '400')}">${wrap(`$${b.faixaAte.toLocaleString()}`)}</td>`,
+            'th-agg-liqPrice': `<td class="col-agg-liq ${autoFitClass}" style="font-family:monospace; vertical-align:middle">${wrap(liqHtml)}</td>`,
+            'th-agg-liqVolLong': `<td class="mono col-agg-val ${autoFitClass}">${wrap(liqRenderer(b.liqVolLong, 'long'))}</td>`,
+            'th-agg-liqVolShort': `<td class="mono col-agg-val ${autoFitClass}">${wrap(liqRenderer(b.liqVolShort, 'short'))}</td>`,
+            'th-agg-qtdLong': `<td class="col-agg-qty ${autoFitClass}" style="color:${colorLong}; text-align:center">${wrap(formatQty(b.qtdLong))}</td>`,
+            'th-agg-notionalLong': `<td ${tooltipAttr} class="${tooltipClass} col-agg-val ${autoFitClass}" style="color:${colorLong}; font-family:monospace; font-weight:${b.notionalLong > 30_000_000 ? '700' : '400'}">${wrap(formatVal(b.notionalLong))}</td>`,
+            'th-agg-qtdShort': `<td class="col-agg-qty ${autoFitClass}" style="color:${colorShort}; text-align:center">${wrap(formatQty(b.qtdShort))}</td>`,
+            'th-agg-notionalShort': `<td ${tooltipAttr} class="${tooltipClass} col-agg-val ${autoFitClass}" style="color:${colorShort}; font-family:monospace; font-weight:${b.notionalShort > 30_000_000 ? '700' : '400'}">${wrap(formatVal(b.notionalShort))}</td>`,
+            'th-agg-totalNotional': `<td ${tooltipAttr} class="${tooltipClass} col-agg-val ${autoFitClass}" style="font-family:monospace; color:${totalNotionalColor}; font-weight:${fwSemi}">${wrap(formatVal(totalNotional))}</td>`,
+            'th-agg-dominancia': `<td class="col-agg-dom ${autoFitClass}" style="color:${domColor}; font-weight:${fwBold}">${wrap(domType)}</td>`,
+            'th-agg-pctDom': `<td class="col-agg-pct ${autoFitClass}" style="color:${domColor}; font-weight:${fwBold}">${wrap(domPct > 0 ? domPct.toFixed(1) + '%' : '—')}</td>`,
+            'th-agg-intensidade': `<td class="col-agg-int ${autoFitClass}" style="color:${intColor}; font-size:11px; font-weight:${fwSemi}">${wrap(intType)}</td>`,
+            'th-agg-tipoZona': `<td class="col-agg-zone ${autoFitClass}" style="color:${zoneColor}; font-weight:${fwSemi}">${wrap(zoneType)}</td>`,
+            'th-agg-ativosLong': `<td class="col-agg-assets ${autoFitClass}" style="color:${colorLong}; font-size:11px; max-width:150px;" title="${Array.from(b.ativosLong).join(', ')}">${wrap(Array.from(b.ativosLong).join(', '))}</td>`,
+            'th-agg-ativosShort': `<td class="col-agg-assets ${autoFitClass}" style="color:${colorShort}; font-size:11px; max-width:150px;" title="${Array.from(b.ativosShort).join(', ')}">${wrap(Array.from(b.ativosShort).join(', '))}</td>`
         };
 
         // Get saved column order (if any)
@@ -849,7 +881,7 @@ function createRowRenderer(context) {
             newContent = Object.values(cellMap).join('');
         }
 
-        return `<tr class="${trClass}" style="${expectedStyle}">${newContent}</tr>`;
+        return `<tr class="${trClass}" style="height: ${rowHeight}px; ${expectedStyle}">${newContent}</tr>`;
     };
 }
 

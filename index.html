@@ -385,6 +385,13 @@
                     <input type="number" id="rowHeightRangeDesktop" class="js-row-height-range" min="30" max="100"
                         value="52" style="width: 80px">
                 </div>
+                <div class="ctrl" style="flex-direction: row; justify-content: space-between; align-items: center;">
+                    <label title="Auto-ajusta o tamanho da fonte para caber na célula">Auto-fit Text</label>
+                    <label class="switch">
+                        <input type="checkbox" id="autoFitTextToggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
             </div>
 
 
@@ -514,11 +521,13 @@
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:4px">
                         <div style="display:flex; flex-direction:column; gap:2px">
                             <span style="font-size:10px; color:#22c55e">Compra Forte</span>
-                            <input type="color" id="colorLiquidationBuyStrong" class="js-agg-color-buy-strong" value="#22c55e">
+                            <input type="color" id="colorLiquidationBuyStrong" class="js-agg-color-buy-strong"
+                                value="#22c55e">
                         </div>
                         <div style="display:flex; flex-direction:column; gap:2px">
                             <span style="font-size:10px; color:#4ade80">Compra Normal</span>
-                            <input type="color" id="colorLiquidationBuyNormal" class="js-agg-color-buy-normal" value="#4ade80">
+                            <input type="color" id="colorLiquidationBuyNormal" class="js-agg-color-buy-normal"
+                                value="#4ade80">
                         </div>
                         <div style="display:flex; flex-direction:column; gap:2px">
                             <span style="font-size:10px; color:#ef4444">Venda Forte</span>
@@ -532,7 +541,8 @@
                         </div>
                         <div style="display:flex; flex-direction:column; gap:2px; grid-column: span 2">
                             <span style="font-size:10px; color:#facc15">Destaque Preço Atual</span>
-                            <input type="color" id="colorLiquidationHighlight" class="js-agg-color-highlight" value="#facc15">
+                            <input type="color" id="colorLiquidationHighlight" class="js-agg-color-highlight"
+                                value="#facc15">
                         </div>
                     </div>
                 </div>
@@ -698,30 +708,55 @@
             </div>
             <div id="liquidationTableFullSection">
                 <div class="table-wrap agg-table-wrap" style="max-height: 450px; overflow-y: scroll;">
-                    <table class="liquidation-table" id="liquidationTableFull" style="table-layout: fixed; width: 100%;">
+                    <table class="liquidation-table" id="liquidationTableFull"
+                        style="table-layout: fixed; width: 100%;">
                         <thead>
                             <tr>
-                                <th id="th-agg-faixaDe" class="col-agg-range">Faixa<br>De ($)<div class="resizer"></div></th>
-                                <th id="th-agg-faixaAte" class="col-agg-range">Faixa<br>Até ($)<div class="resizer"></div></th>
-                                <th id="th-agg-liqPrice" class="col-agg-liq" title="Weighted Average Liquidation Price (Correlated)">Liq
-                                    Price<br>Corr ($)<div class="resizer"></div></th>
+                                <th id="th-agg-faixaDe" class="col-agg-range">Faixa<br>De ($)<div class="resizer"></div>
+                                </th>
+                                <th id="th-agg-faixaAte" class="col-agg-range">Faixa<br>Até ($)<div class="resizer">
+                                    </div>
+                                </th>
+                                <th id="th-agg-liqPrice" class="col-agg-liq"
+                                    title="Weighted Average Liquidation Price (Correlated)">Liq
+                                    Price<br>Corr ($)<div class="resizer"></div>
+                                </th>
                                 <th id="th-agg-liqVolLong" class="col-agg-val"
                                     title="Total Vol of LONG positions falling in this Liquidation Price band">Liq
-                                    Vol<br>Long<div class="resizer"></div></th>
+                                    Vol<br>Long<div class="resizer"></div>
+                                </th>
                                 <th id="th-agg-liqVolShort" class="col-agg-val"
                                     title="Total Vol of SHORT positions falling in this Liquidation Price band">Liq
-                                    Vol<br>Short<div class="resizer"></div></th>
-                                <th id="th-agg-qtdLong" class="col-agg-qty">Qtd<br>Long<div class="resizer"></div></th>
-                                <th id="th-agg-notionalLong" class="col-agg-val">Notional<br>Long<div class="resizer"></div></th>
-                                <th id="th-agg-qtdShort" class="col-agg-qty">Qtd<br>Short<div class="resizer"></div></th>
-                                <th id="th-agg-notionalShort" class="col-agg-val">Notional<br>Short<div class="resizer"></div></th>
-                                <th id="th-agg-totalNotional" class="col-agg-val">Total<br>Notional<div class="resizer"></div></th>
-                                <th id="th-agg-dominancia" class="col-agg-dom">Domi<br>nancia<div class="resizer"></div></th>
-                                <th id="th-agg-pctDom" class="col-agg-pct">% Dom<div class="resizer"></div></th>
-                                <th id="th-agg-intensidade" class="col-agg-int">Inten<br>sidade<div class="resizer"></div></th>
-                                <th id="th-agg-tipoZona" class="col-agg-zone">Tipo de<br>Zona<div class="resizer"></div></th>
-                                <th id="th-agg-ativosLong" class="col-agg-assets">Ativos<br>Long<div class="resizer"></div></th>
-                                <th id="th-agg-ativosShort" class="col-agg-assets">Ativos<br>Short<div class="resizer"></div></th>
+                                    Vol<br>Short<div class="resizer"></div>
+                                </th>
+                                <th id="th-agg-qtdLong" class="col-agg-qty">Qtd<br>Long<div class="resizer"></div>
+                                </th>
+                                <th id="th-agg-notionalLong" class="col-agg-val">Notional<br>Long<div class="resizer">
+                                    </div>
+                                </th>
+                                <th id="th-agg-qtdShort" class="col-agg-qty">Qtd<br>Short<div class="resizer"></div>
+                                </th>
+                                <th id="th-agg-notionalShort" class="col-agg-val">Notional<br>Short<div class="resizer">
+                                    </div>
+                                </th>
+                                <th id="th-agg-totalNotional" class="col-agg-val">Total<br>Notional<div class="resizer">
+                                    </div>
+                                </th>
+                                <th id="th-agg-dominancia" class="col-agg-dom">Domi<br>nancia<div class="resizer"></div>
+                                </th>
+                                <th id="th-agg-pctDom" class="col-agg-pct">% Dom<div class="resizer"></div>
+                                </th>
+                                <th id="th-agg-intensidade" class="col-agg-int">Inten<br>sidade<div class="resizer">
+                                    </div>
+                                </th>
+                                <th id="th-agg-tipoZona" class="col-agg-zone">Tipo de<br>Zona<div class="resizer"></div>
+                                </th>
+                                <th id="th-agg-ativosLong" class="col-agg-assets">Ativos<br>Long<div class="resizer">
+                                    </div>
+                                </th>
+                                <th id="th-agg-ativosShort" class="col-agg-assets">Ativos<br>Short<div class="resizer">
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="liquidationTableFullBody">
@@ -751,7 +786,8 @@
         <div class="section-content" id="liquidationSectionSummaryContent" style="position:relative;">
             <div class="agg-stats-bar"
                 style="display:flex; gap:12px; padding:8px 16px; background:var(--panel-bg); border-bottom:1px solid var(--border-color); font-size:12px; flex-wrap:wrap; align-items:center; justify-content: space-between;">
-                <div id="liquidationStatsBarSummary" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+                <div id="liquidationStatsBarSummary"
+                    style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
                     <!-- Filled by JS -->
                 </div>
                 <div style="display:flex; gap:8px; align-items:center;">
@@ -777,30 +813,55 @@
             </div>
             <div id="liquidationTableSummarySection">
                 <div class="table-wrap agg-table-wrap" style="max-height: 450px; overflow-y: scroll;">
-                    <table class="liquidation-table" id="liquidationTableSummary" style="table-layout: fixed; width: 100%;">
+                    <table class="liquidation-table" id="liquidationTableSummary"
+                        style="table-layout: fixed; width: 100%;">
                         <thead>
                             <tr>
-                                <th id="th-agg-faixaDe" class="col-agg-range">Faixa<br>De ($)<div class="resizer"></div></th>
-                                <th id="th-agg-faixaAte" class="col-agg-range">Faixa<br>Até ($)<div class="resizer"></div></th>
-                                <th id="th-agg-liqPrice" class="col-agg-liq" title="Weighted Average Liquidation Price (Correlated)">Liq
-                                    Price<br>Corr ($)<div class="resizer"></div></th>
+                                <th id="th-agg-faixaDe" class="col-agg-range">Faixa<br>De ($)<div class="resizer"></div>
+                                </th>
+                                <th id="th-agg-faixaAte" class="col-agg-range">Faixa<br>Até ($)<div class="resizer">
+                                    </div>
+                                </th>
+                                <th id="th-agg-liqPrice" class="col-agg-liq"
+                                    title="Weighted Average Liquidation Price (Correlated)">Liq
+                                    Price<br>Corr ($)<div class="resizer"></div>
+                                </th>
                                 <th id="th-agg-liqVolLong" class="col-agg-val"
                                     title="Total Vol of LONG positions falling in this Liquidation Price band">Liq
-                                    Vol<br>Long<div class="resizer"></div></th>
+                                    Vol<br>Long<div class="resizer"></div>
+                                </th>
                                 <th id="th-agg-liqVolShort" class="col-agg-val"
                                     title="Total Vol of SHORT positions falling in this Liquidation Price band">Liq
-                                    Vol<br>Short<div class="resizer"></div></th>
-                                <th id="th-agg-qtdLong" class="col-agg-qty">Qtd<br>Long<div class="resizer"></div></th>
-                                <th id="th-agg-notionalLong" class="col-agg-val">Notional<br>Long<div class="resizer"></div></th>
-                                <th id="th-agg-qtdShort" class="col-agg-qty">Qtd<br>Short<div class="resizer"></div></th>
-                                <th id="th-agg-notionalShort" class="col-agg-val">Notional<br>Short<div class="resizer"></div></th>
-                                <th id="th-agg-totalNotional" class="col-agg-val">Total<br>Notional<div class="resizer"></div></th>
-                                <th id="th-agg-dominancia" class="col-agg-dom">Domi<br>nancia<div class="resizer"></div></th>
-                                <th id="th-agg-pctDom" class="col-agg-pct">% Dom<div class="resizer"></div></th>
-                                <th id="th-agg-intensidade" class="col-agg-int">Inten<br>sidade<div class="resizer"></div></th>
-                                <th id="th-agg-tipoZona" class="col-agg-zone">Tipo de<br>Zona<div class="resizer"></div></th>
-                                <th id="th-agg-ativosLong" class="col-agg-assets">Ativos<br>Long<div class="resizer"></div></th>
-                                <th id="th-agg-ativosShort" class="col-agg-assets">Ativos<br>Short<div class="resizer"></div></th>
+                                    Vol<br>Short<div class="resizer"></div>
+                                </th>
+                                <th id="th-agg-qtdLong" class="col-agg-qty">Qtd<br>Long<div class="resizer"></div>
+                                </th>
+                                <th id="th-agg-notionalLong" class="col-agg-val">Notional<br>Long<div class="resizer">
+                                    </div>
+                                </th>
+                                <th id="th-agg-qtdShort" class="col-agg-qty">Qtd<br>Short<div class="resizer"></div>
+                                </th>
+                                <th id="th-agg-notionalShort" class="col-agg-val">Notional<br>Short<div class="resizer">
+                                    </div>
+                                </th>
+                                <th id="th-agg-totalNotional" class="col-agg-val">Total<br>Notional<div class="resizer">
+                                    </div>
+                                </th>
+                                <th id="th-agg-dominancia" class="col-agg-dom">Domi<br>nancia<div class="resizer"></div>
+                                </th>
+                                <th id="th-agg-pctDom" class="col-agg-pct">% Dom<div class="resizer"></div>
+                                </th>
+                                <th id="th-agg-intensidade" class="col-agg-int">Inten<br>sidade<div class="resizer">
+                                    </div>
+                                </th>
+                                <th id="th-agg-tipoZona" class="col-agg-zone">Tipo de<br>Zona<div class="resizer"></div>
+                                </th>
+                                <th id="th-agg-ativosLong" class="col-agg-assets">Ativos<br>Long<div class="resizer">
+                                    </div>
+                                </th>
+                                <th id="th-agg-ativosShort" class="col-agg-assets">Ativos<br>Short<div class="resizer">
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="liquidationTableSummaryBody">
@@ -852,6 +913,7 @@
                             <th id="th-address" class="col-address" title="Whale address or known name"><span
                                     class="th-label">Address</span>
                                 <div class="resizer"></div>
+                                <div class="resizer-v"></div>
                             </th>
                             <th id="th-coin" class="col-coin" title="Cryptocurrency Token"><span
                                     class="th-label">Coin</span>
