@@ -64,3 +64,5 @@ test_*.py
 inspect_*.py
 validate_*.py
 test_*.html
+
+.vercel
