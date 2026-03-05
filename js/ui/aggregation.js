@@ -736,7 +736,7 @@ function createRowRenderer(context) {
             const r = parseInt(hexColor.slice(1, 3), 16);
             const g = parseInt(hexColor.slice(3, 5), 16);
             const b = parseInt(hexColor.slice(5, 7), 16);
-            highlightStyle = `background:rgba(${r},${g},${b},0.2); border:1px solid ${hexColor}; box-shadow:inset 0 0 10px rgba(${r},${g},${b},0.2)`;
+            highlightStyle = `background:rgba(${r},${g},${b},0.2); border:1px solid ${hexColor};`;
         }
 
         const trClass = [

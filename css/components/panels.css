@@ -9,11 +9,7 @@
     padding: 10px 24px;
     padding-bottom: calc(10px + var(--safe-bottom));
     overflow-x: auto;
-    background: linear-gradient(
-        180deg, 
-        rgba(18, 18, 30, 0.5) 0%, 
-        rgba(18, 18, 30, 0.35) 100%
-    );
+    background: rgba(18, 18, 30, 0.7);
     border-bottom: 1px solid var(--glass-border);
     position: relative;
     z-index: 75;
@@ -22,27 +18,10 @@
     flex-wrap: nowrap;
     align-items: center;
     -webkit-overflow-scrolling: touch;
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
+    /* backdrop-filter removed for performance */
 }
 
-#ranking-panel::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(
-        90deg, 
-        transparent 0%, 
-        rgba(139, 158, 255, 0.2) 20%,
-        rgba(255, 255, 255, 0.15) 50%,
-        rgba(139, 158, 255, 0.2) 80%,
-        transparent 100%
-    );
-    opacity: 0.6;
-}
+/* #ranking-panel::before removed for performance - gradient line */
 
 /* Mobile ranking panel */
 @media (max-width: 767px) {
@@ -67,42 +46,26 @@
 
 .ranking-card {
     flex-shrink: 0;
-    background: linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.06) 0%,
-        rgba(255, 255, 255, 0.03) 100%
-    );
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--glass-border);
     border-radius: var(--r-md);
     padding: 8px 14px;
     min-width: 140px;
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* backdrop-filter removed for performance */
+    transition: transform 0.2s ease, background 0.2s ease;
     display: flex;
     flex-direction: column;
     cursor: pointer;
     position: relative;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
     -webkit-tap-highlight-color: transparent;
     overflow: hidden;
-    will-change: transform, box-shadow;
-    box-shadow: 
-        0 4px 12px rgba(0, 0, 0, 0.2),
-        0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .ranking-card.primary {
-    background: linear-gradient(
-        135deg, 
-        rgba(139, 158, 255, 0.2) 0%, 
-        rgba(107, 124, 224, 0.12) 100%
-    );
+    background: rgba(139, 158, 255, 0.15);
     border-color: rgba(139, 158, 255, 0.3);
-    box-shadow: 
-        0 4px 16px rgba(139, 158, 255, 0.2),
-        0 0 0 1px rgba(139, 158, 255, 0.1) inset;
+    box-shadow: 0 2px 8px rgba(139, 158, 255, 0.15);
 }
 
 .ranking-card.secondary {
@@ -119,82 +82,26 @@
     font-weight: 700;
 }
 
-.ranking-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-        90deg,
-        transparent 0%,
-        rgba(139, 158, 255, 0.1) 50%,
-        transparent 100%
-    );
-    transition: left 0.6s ease;
-    pointer-events: none;
-}
-
-.ranking-card:hover::before {
-    left: 100%;
-}
-
-/* Glass shine sweep effect on hover */
+/* Shine effects removed for performance
+.ranking-card::before,
 .ranking-card::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(
-        105deg,
-        transparent 40%,
-        rgba(255, 255, 255, 0.05) 45%,
-        rgba(255, 255, 255, 0.15) 50%,
-        rgba(255, 255, 255, 0.05) 55%,
-        transparent 60%
-    );
-    transform: translateX(-100%) rotate(25deg);
-    pointer-events: none;
-    opacity: 0;
+    content: none;
 }
-
-.ranking-card:hover::after {
-    animation: glassShine 0.8s ease forwards;
-    opacity: 1;
-}
+*/
 
 .ranking-card:active {
     transform: scale(0.97);
 }
 
 .ranking-card:hover {
-    background: linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.1) 0%,
-        rgba(255, 255, 255, 0.06) 100%
-    );
-    transform: translateY(-2px);
-    border-color: rgba(139, 158, 255, 0.25);
-    box-shadow: 
-        0 8px 24px rgba(0, 0, 0, 0.3),
-        0 0 20px rgba(139, 158, 255, 0.15),
-        0 1px 0 rgba(255, 255, 255, 0.08) inset;
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+    border-color: rgba(139, 158, 255, 0.2);
 }
 
 .ranking-card.primary:hover {
-    background: linear-gradient(
-        135deg, 
-        rgba(139, 158, 255, 0.3) 0%, 
-        rgba(107, 124, 224, 0.2) 100%
-    );
-    box-shadow: 
-        0 8px 24px rgba(139, 158, 255, 0.3),
-        0 0 30px rgba(139, 158, 255, 0.2),
-        0 1px 0 rgba(255, 255, 255, 0.1) inset;
-    border-color: rgba(139, 158, 255, 0.4);
+    background: rgba(139, 158, 255, 0.2);
+    border-color: rgba(139, 158, 255, 0.35);
 }
 
 .ranking-card:active {
@@ -203,20 +110,13 @@
 
 .ranking-card.selected {
     border-color: var(--gold);
-    background: linear-gradient(135deg, rgba(255, 191, 0, 0.12) 0%, rgba(255, 191, 0, 0.08) 100%);
-    box-shadow: 0 0 20px rgba(255, 191, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.3);
+    background: rgba(255, 191, 0, 0.12);
+    box-shadow: 0 0 12px rgba(255, 191, 0, 0.2);
     transform: translateY(-1px);
-    animation: selectedPulse 2s ease-in-out infinite;
+    /* animation removed for performance */
 }
 
-@keyframes selectedPulse {
-    0%, 100% {
-        box-shadow: 0 0 20px rgba(255, 191, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-    50% {
-        box-shadow: 0 0 28px rgba(255, 191, 0, 0.35), 0 4px 16px rgba(0, 0, 0, 0.35);
-    }
-}
+/* @keyframes selectedPulse removed for performance */
 
 .ranking-selected-indicator {
     position: absolute;
@@ -307,7 +207,7 @@
     padding: 10px 24px;
     padding-bottom: calc(10px + var(--safe-bottom));
     overflow-x: auto;
-    background: linear-gradient(180deg, rgba(4, 6, 15, 0.65) 0%, rgba(4, 6, 15, 0.50) 100%);
+    background: rgba(4, 6, 15, 0.7);
     border-bottom: 1px solid var(--glass-border);
     position: relative;
     z-index: 80;
@@ -318,16 +218,7 @@
     -webkit-overflow-scrolling: touch;
 }
 
-#quotes-panel::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent 0%, var(--glass-highlight) 50%, transparent 100%);
-    opacity: 0.4;
-}
+/* #quotes-panel::before removed for performance */
 
 /* Mobile quotes panel */
 @media (max-width: 767px) {
@@ -352,18 +243,15 @@
 
 .quote-card {
     flex-shrink: 0;
-    background: var(--glass-bg-strong);
+    background: rgba(255, 255, 255, 0.08);
     border: 1px solid var(--glass-border);
     border-radius: var(--r-md);
     padding: 8px 14px;
     min-width: 130px;
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* backdrop-filter removed for performance */
+    transition: background 0.2s ease;
     position: relative;
     overflow: hidden;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
 }
 
 .quote-card::before {

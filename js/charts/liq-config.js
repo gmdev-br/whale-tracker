@@ -29,9 +29,8 @@ export const liqChartOptions = {
             padding: 14,
             displayColors: false,
             cornerRadius: 8,
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5)',
+            // backdropFilter removed for performance
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
             callbacks: {
                 label: function (context) {
                     if (context.chart.config.type === 'bar') {

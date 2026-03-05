@@ -378,6 +378,7 @@ let priceTicker = null;
 export function startPriceTicker() {
     stopPriceTicker();
 
+    // Atualiza a cada 5 segundos para evitar sobrecarga
     priceTicker = setInterval(async () => {
         try {
             const response = await fetch('https://api.hyperliquid.xyz/info', {

@@ -4,13 +4,8 @@
 
 /* ── Header — Liquid Glass Enhanced ── */
 .header {
-    background: linear-gradient(
-        180deg, 
-        rgba(18, 18, 30, 0.75) 0%, 
-        rgba(18, 18, 30, 0.55) 100%
-    );
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    background: rgba(18, 18, 30, 0.95);
+    /* backdrop-filter removed for performance */
     border-bottom: 1px solid var(--glass-border);
     padding: 14px 24px;
     padding-top: calc(14px + var(--safe-top));
@@ -22,44 +17,12 @@
     position: sticky;
     top: 0;
     z-index: var(--z-glass-elevated);
-    box-shadow: var(--glass-shadow);
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    will-change: transform;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     overflow: hidden;
 }
 
-/* Liquid glass highlight on header */
-.header::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(
-        90deg, 
-        transparent 0%, 
-        rgba(139, 158, 255, 0.4) 20%,
-        rgba(255, 255, 255, 0.3) 50%,
-        rgba(139, 158, 255, 0.4) 80%,
-        transparent 100%
-    );
-    opacity: 0.8;
-}
-
-/* Subtle liquid gradient overlay */
-.header::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--liquid-gradient);
-    pointer-events: none;
-    opacity: 0.5;
-}
+/* Liquid glass highlight on header - removed for performance */
+/* .header::before and .header::after removed */
 
 .header-center {
     position: absolute;
@@ -78,25 +41,17 @@
     font-size: 14px;
     font-weight: 600;
     color: var(--gold);
-    background: rgba(7, 12, 26, 0.7);
+    background: rgba(7, 12, 26, 0.8);
     padding: 6px 10px;
     border-radius: var(--r-sm);
     border: 1px solid var(--glass-border);
     pointer-events: none;
     z-index: 20;
-    backdrop-filter: blur(4px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    animation: pricePulse 3s ease-in-out infinite;
+    /* backdrop-filter and animation removed for performance */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
-@keyframes pricePulse {
-    0%, 100% {
-        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-    }
-    50% {
-        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5);
-    }
-}
+/* @keyframes pricePulse removed for performance */
 
 .logo {
     display: flex;
@@ -139,7 +94,7 @@
     flex-wrap: wrap;
 }
 
-/* ── Controls Bar — Liquid Glass ── */
+/* ── Controls Bar — Simplified ── */
 .controls {
     padding: 10px 24px;
     display: flex;
@@ -147,48 +102,18 @@
     align-items: center;
     flex-wrap: wrap;
     border-bottom: 1px solid var(--glass-border);
-    background: linear-gradient(
-        180deg, 
-        rgba(20, 20, 35, 0.65) 0%, 
-        rgba(15, 15, 28, 0.5) 100%
-    );
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
+    background: rgba(20, 20, 35, 0.85);
+    /* backdrop-filter removed for performance */
     z-index: var(--z-glass-base);
     position: relative;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    will-change: transform;
-    box-shadow: 
-        0 4px 20px rgba(0, 0, 0, 0.2),
-        0 1px 0 rgba(255, 255, 255, 0.02) inset;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .controls:hover {
-    background: linear-gradient(
-        180deg, 
-        rgba(25, 25, 42, 0.7) 0%, 
-        rgba(20, 20, 35, 0.55) 100%
-    );
+    background: rgba(25, 25, 42, 0.9);
 }
 
-.controls::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(
-        90deg, 
-        transparent 0%, 
-        rgba(139, 158, 255, 0.25) 20%,
-        rgba(255, 255, 255, 0.15) 50%,
-        rgba(139, 158, 255, 0.25) 80%,
-        transparent 100%
-    );
-    opacity: 0.5;
-}
+/* .controls::before removed for performance */
 
 /* Mobile controls */
 @media (max-width: 480px) {
@@ -296,22 +221,7 @@
     position: relative;
 }
 
-.stats-row::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(
-        90deg,
-        transparent 0%,
-        rgba(139, 158, 255, 0.3) 20%,
-        rgba(255, 255, 255, 0.2) 50%,
-        rgba(139, 158, 255, 0.3) 80%,
-        transparent 100%
-    );
-}
+/* .stats-row::before removed for performance */
 
 /* ── Collapsible Sections ── */
 .section-wrapper {
@@ -387,20 +297,15 @@
 
 .stat {
     flex: 1;
-    background: linear-gradient(
-        180deg, 
-        rgba(25, 25, 40, 0.6) 0%, 
-        rgba(18, 18, 32, 0.5) 100%
-    );
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
+    background: rgba(25, 25, 40, 0.7);
+    /* backdrop-filter removed for performance */
     padding: 14px 20px;
     min-width: 140px;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: background 0.2s ease;
     z-index: var(--z-glass-base);
     position: relative;
     border-right: 1px solid rgba(139, 158, 255, 0.1);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    box-shadow: none;
 }
 
 .stat:last-child {
@@ -528,8 +433,7 @@
     border-radius: var(--r-sm);
     font-size: 11px;
     font-family: inherit;
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
+    /* backdrop-filter removed for performance */
     transition: border-color 0.2s, box-shadow 0.2s;
     -webkit-appearance: none;
     appearance: none;
@@ -562,24 +466,11 @@
     color: var(--muted);
     font-size: 11px;
     display: none;
-    background: rgba(7, 12, 26, 0.5);
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
-    animation: pulseLoading 2s infinite ease-in-out;
+    background: rgba(7, 12, 26, 0.6);
+    /* backdrop-filter and animation removed for performance */
 }
 
-@keyframes pulseLoading {
-
-    0%,
-    100% {
-        opacity: 0.8;
-    }
-
-    50% {
-        opacity: 1;
-        background: rgba(7, 12, 26, 0.8);
-    }
-}
+/* @keyframes pulseLoading removed for performance */
 
 
 /* ── Settings Drawer ── */
@@ -593,13 +484,12 @@
     width: 340px;
     max-width: 90vw;
     height: 100vh;
-    background: linear-gradient(180deg, rgba(7, 12, 26, 0.98) 0%, rgba(7, 12, 26, 0.95) 100%);
-    backdrop-filter: var(--glass-blur-heavy);
-    -webkit-backdrop-filter: var(--glass-blur-heavy);
+    background: rgba(7, 12, 26, 0.98);
+    /* backdrop-filter removed for performance */
     z-index: 1000;
     border-left: 1px solid var(--glass-border);
-    transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.6);
+    transition: right 0.3s ease;
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.4);
 }
 
 .settings-drawer.active {
@@ -614,9 +504,8 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.7);
+    /* backdrop-filter removed for performance */
     z-index: 999;
     opacity: 0;
     transition: opacity 0.3s ease;

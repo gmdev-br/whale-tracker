@@ -7,41 +7,20 @@
 #liq-chart-section {
     position: relative;
     padding: 20px;
-    background: linear-gradient(
-        180deg, 
-        rgba(25, 25, 40, 0.5) 0%, 
-        rgba(18, 18, 30, 0.35) 100%
-    );
+    background: rgba(25, 25, 40, 0.6);
     border-bottom: 1px solid var(--glass-border);
     display: none;
     min-height: 200px;
     /* max-height: 400px;  -- Removed to allow manual resizing */
     overflow: hidden;
     z-index: 50;
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    /* transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); -- Removed for better resize performance */
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    will-change: transform, opacity;
-    box-shadow: 
-        0 4px 24px rgba(0, 0, 0, 0.3),
-        0 1px 0 rgba(255, 255, 255, 0.03) inset;
+    /* backdrop-filter removed for performance */
+    /* will-change removed for performance */
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* Add subtle grid background for data points */
-#chart-section::after,
-#liq-chart-section::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image:
-        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-    background-size: 20px 20px;
-    pointer-events: none;
-    opacity: 0.5;
-}
+/* Grid background removed for performance */
+/* #chart-section::after, #liq-chart-section::after removed */
 
 #chart-section::before,
 #liq-chart-section::before {

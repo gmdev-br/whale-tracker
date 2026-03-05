@@ -36,13 +36,10 @@
     padding: 0;
 }
 
-/* ── Body & Background — Telegram Liquid Glass ── */
+/* ── Body & Background — Simplified for Performance ── */
 body {
-    background: 
-        radial-gradient(ellipse at 0% 0%, rgba(139, 158, 255, 0.08) 0%, transparent 50%),
-        radial-gradient(ellipse at 100% 100%, rgba(107, 124, 224, 0.06) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 50%, rgba(20, 20, 35, 1) 0%, rgba(10, 10, 15, 1) 100%);
     background-color: var(--bg-deep);
+    background-image: radial-gradient(ellipse at 50% 50%, rgba(20, 20, 35, 1) 0%, rgba(10, 10, 15, 1) 100%);
     color: var(--text);
     font-family: 'Inter', sans-serif;
     font-size: 13px;
@@ -53,7 +50,8 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Liquid Glass ambient background orbs */
+/* Liquid Glass ambient background orbs - REMOVED for performance */
+/*
 body::before,
 body::after {
     content: '';
@@ -90,7 +88,6 @@ body::after {
     );
 }
 
-/* Additional liquid glass glow element */
 body .ambient-glow {
     position: fixed;
     width: 600px;
@@ -108,6 +105,7 @@ body .ambient-glow {
     pointer-events: none;
     z-index: 0;
 }
+*/
 
 /* Orb floating animation - DISABLED for performance
 @keyframes orbFloat {
@@ -179,7 +177,7 @@ body .ambient-glow {
     border-radius: 4px;
     border: 1px solid rgba(139, 158, 255, 0.15);
     transition: all 0.2s ease;
-    backdrop-filter: blur(4px);
+    /* backdrop-filter removed for performance */
 }
 
 ::-webkit-scrollbar-thumb:hover {

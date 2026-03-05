@@ -297,7 +297,12 @@ function setupEventListeners() {
                 })
                 .map(r => {
                     const entryCcy = r._entCcy != null ? r._entCcy : getCorrelatedEntry(r, activeEntryCurrency, currentPrices, fxRates);
-                    return entryCcy != null ? Math.round(entryCcy).toString() : null;
+                    if (entryCcy == null) return null;
+                    const price = Math.round(entryCcy).toString();
+                    // Calculate Value BTC (volume in BTC)
+                    const valueBtc = btcPrice > 0 ? r.positionValue / btcPrice : 0;
+                    const volume = Math.round(valueBtc).toString();
+                    return `${price}_${volume}`;
                 })
                 .filter(p => p !== null);
 
@@ -309,7 +314,7 @@ function setupEventListeners() {
                 return;
             }
 
-            // Copy to clipboard (semicolon-separated, no decimals)
+            // Copy to clipboard (semicolon-separated, price_volume format)
             const text = prices.join(';');
             navigator.clipboard.writeText(text).then(() => {
                 const msg = minBtcVolume > 0

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   LIQUID GLASS — Animations
+   LIQUID GLASS — Animations (Optimized for Performance)
    ═══════════════════════════════════════════════════════════ */
 
 /* ── Core Animations ── */
@@ -18,7 +18,6 @@
         opacity: 0;
         transform: translateY(-8px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -26,13 +25,8 @@
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes slideUp {
@@ -40,49 +34,42 @@
         opacity: 0;
         transform: translateY(20px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
     }
 }
 
+/* Shimmer - disabled for performance
 @keyframes shimmer {
-    0% {
-        left: -100%;
-    }
-
-    100% {
-        left: 200%;
-    }
+    0% { left: -100%; }
+    100% { left: 200%; }
 }
+*/
 
+/* Glow animation - disabled for performance
 @keyframes glow {
     0%, 100% {
         box-shadow: 0 0 20px rgba(156, 163, 175, 0.3);
     }
-
     50% {
         box-shadow: 0 0 30px rgba(156, 163, 175, 0.5);
     }
 }
+*/
 
+/* Float animation - disabled for performance
 @keyframes float {
-    0%, 100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(-10px);
-    }
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
 }
+*/
 
 @keyframes ripple {
     0% {
         transform: scale(0);
         opacity: 1;
     }
-
     100% {
         transform: scale(4);
         opacity: 0;
@@ -90,20 +77,17 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Liquid Glass — Advanced Effects
+   Liquid Glass — Advanced Effects (Simplified)
    ═══════════════════════════════════════════════════════════ */
 
-/* Glass shine sweep effect */
+/* Glass shine sweep effect - disabled for performance
 @keyframes glassShine {
-    0% {
-        transform: translateX(-100%) rotate(25deg);
-    }
-    100% {
-        transform: translateX(200%) rotate(25deg);
-    }
+    0% { transform: translateX(-100%) rotate(25deg); }
+    100% { transform: translateX(200%) rotate(25deg); }
 }
+*/
 
-/* Ambient glow pulse */
+/* Ambient glow pulse - disabled for performance
 @keyframes ambientPulse {
     0%, 100% {
         opacity: 0.4;
@@ -114,28 +98,23 @@
         transform: scale(1.05);
     }
 }
+*/
 
-/* Liquid wave effect */
+/* Liquid wave effect - disabled for performance
 @keyframes liquidWave {
-    0%, 100% {
-        background-position: 0% 50%;
-    }
-    50% {
-        background-position: 100% 50%;
-    }
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
 }
+*/
 
-/* Glass refraction shimmer */
+/* Glass refraction shimmer - disabled for performance
 @keyframes refractionShimmer {
-    0% {
-        background-position: -200% center;
-    }
-    100% {
-        background-position: 200% center;
-    }
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
 }
+*/
 
-/* Smooth float with rotation */
+/* Smooth float with rotation - disabled for performance
 @keyframes liquidFloat {
     0%, 100% {
         transform: translateY(0) rotate(0deg);
@@ -150,8 +129,9 @@
         transform: translateY(-5px) rotate(-0.5deg);
     }
 }
+*/
 
-/* Glass border glow */
+/* Glass border glow - disabled for performance
 @keyframes borderGlow {
     0%, 100% {
         border-color: rgba(139, 158, 255, 0.2);
@@ -162,8 +142,9 @@
         box-shadow: 0 0 30px rgba(139, 158, 255, 0.2);
     }
 }
+*/
 
-/* Depth breathing effect */
+/* Depth breathing effect - disabled for performance
 @keyframes depthBreath {
     0%, 100% {
         transform: translateZ(0) scale(1);
@@ -172,3 +153,4 @@
         transform: translateZ(10px) scale(1.002);
     }
 }
+*/

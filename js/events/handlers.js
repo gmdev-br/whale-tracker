@@ -1307,15 +1307,12 @@ export function setupColumnDragAndDrop() {
                     pointer-events: none;
                     z-index: 10000;
                     width: ${columnWidth}px;
-                    background: rgba(15, 23, 42, 0.95);
+                    background: rgba(15, 23, 42, 0.98);
                     border: 2px solid var(--accent);
                     border-radius: var(--r-sm);
-                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(96, 165, 250, 0.2);
-                    backdrop-filter: blur(12px);
-                    -webkit-backdrop-filter: blur(12px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
                     opacity: 0.9;
                     transform: rotate(2deg);
-                    transition: transform 0.1s ease;
                 `;
 
                 document.body.appendChild(dragGhost);

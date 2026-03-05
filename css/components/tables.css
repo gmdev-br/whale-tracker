@@ -15,10 +15,8 @@
     /* Subtle inner shadow for depth */
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04),
         0 1px 3px rgba(0, 0, 0, 0.2);
-    /* GPU acceleration for smooth scrolling */
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    will-change: transform;
+    /* GPU acceleration simplified */
+    /* will-change removed for performance */
     /* Enable vertical scrolling for virtual scroll */
     max-height: 70vh;
 }
@@ -105,21 +103,14 @@ tbody tr {
 }
 
 thead tr {
-    /* Liquid Glass header with enhanced depth */
-    background: linear-gradient(180deg,
-            rgba(25, 25, 40, 0.85) 0%,
-            rgba(18, 18, 30, 0.75) 100%);
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
+    /* Simplified header for performance */
+    background: rgba(25, 25, 40, 0.95);
+    /* backdrop-filter removed for performance */
     position: sticky;
     top: 0;
     z-index: var(--z-glass-elevated);
     border-bottom: 1px solid var(--glass-border);
-    box-shadow:
-        0 2px 8px rgba(0, 0, 0, 0.3),
-        0 1px 0 rgba(255, 255, 255, 0.03) inset;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* thead tr::before removido para prevenir bug de injeção de coluna no thead */
@@ -143,8 +134,7 @@ th {
     min-height: 44px;
     display: table-cell;
     vertical-align: middle;
-    /* Subtle text shadow for depth */
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    /* text-shadow removed for performance */
 }
 
 /* Mobile table header adjustments */
@@ -328,26 +318,17 @@ th.sorted .sort-icon {
 /* ── Table Body — Liquid Glass Rows ── */
 tbody tr {
     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-    transition:
-        background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-        box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-        transform 0.2s ease;
+    transition: background-color 0.15s ease;
     position: relative;
-    background: linear-gradient(90deg,
-            rgba(20, 20, 35, 0.5) 0%,
-            rgba(15, 15, 28, 0.4) 100%);
-    will-change: background-color, box-shadow;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
+    background: rgba(20, 20, 35, 0.5);
+    /* will-change and complex transitions removed for performance */
 }
 
 /* Allow inline style background to override CSS background for aggregation tables */
 /* Scoped to liquidation sections to avoid affecting other tables */
 #liquidationSectionFullWrapper tbody tr,
 #aggResumidaSectionWrapper tbody tr {
-    background: linear-gradient(90deg,
-            rgba(20, 20, 35, 0.5) 0%,
-            rgba(15, 15, 28, 0.4) 100%) !important;
+    background: rgba(20, 20, 35, 0.5) !important;
 }
 
 /* Override background for aggregation table forte zones - applies only when inline style is present */
@@ -523,9 +504,8 @@ td.col-asset {
 
 /* ── Expand Row ── */
 .expand-row td {
-    background: linear-gradient(180deg, rgba(4, 6, 15, 0.80) 0%, rgba(4, 6, 15, 0.65) 100%);
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
+    background: rgba(4, 6, 15, 0.85);
+    /* backdrop-filter removed for performance */
     padding: 0;
     border-top: 1px solid var(--glass-border);
     border-bottom: 1px solid var(--glass-border);
@@ -868,7 +848,7 @@ td.col-asset {
     height: 6px;
     background: #22c55e;
     border-radius: 50%;
-    animation: pulse 2s infinite;
+    /* animation removed for performance */
 }
 
 /* Subtle flash animation */
@@ -931,25 +911,11 @@ td.col-asset {
 
 /* ── Loading States ── */
 .loading-row {
-    background: linear-gradient(90deg,
-            rgba(30, 41, 59, 0.3) 0%,
-            rgba(30, 41, 59, 0.1) 50%,
-            rgba(30, 41, 59, 0.3) 100%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-    /* GPU accelerated loading animation */
-    will-change: background-position;
+    background: rgba(30, 41, 59, 0.5);
+    /* animation and gradient removed for performance */
 }
 
-@keyframes shimmer {
-    0% {
-        background-position: 200% 0;
-    }
-
-    100% {
-        background-position: -200% 0;
-    }
-}
+/* @keyframes shimmer removed for performance */
 
 /* ── Row Highlight Animation ── */
 .row-highlight {
@@ -990,7 +956,7 @@ td.col-asset {
     font-size: 9px;
     color: #facc15;
     font-weight: 700;
-    text-shadow: 0 0 4px rgba(250, 204, 21, 0.5);
+    /* text-shadow removed for performance */
     letter-spacing: 0.5px;
     pointer-events: none;
     z-index: 1;
@@ -1015,7 +981,7 @@ td.col-asset {
 /* LONG zones - uses JS inline style for background, CSS for border */
 .is-forte-zone-long {
     border-left: 2px solid rgba(34, 197, 94, 0.9);
-    box-shadow: inset 0 0 20px rgba(34, 197, 94, 0.18);
+    /* box-shadow simplified for performance */
 }
 
 .is-forte-zone-long td {
@@ -1025,7 +991,7 @@ td.col-asset {
 /* SHORT zones - uses JS inline style for background, CSS for border */
 .is-forte-zone-short {
     border-left: 2px solid rgba(239, 68, 68, 0.9);
-    box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.18);
+    /* box-shadow simplified for performance */
 }
 
 .is-forte-zone-short td {
@@ -1035,7 +1001,7 @@ td.col-asset {
 /* Legacy fallback */
 .is-forte-zone {
     border-left: 2px solid rgba(34, 197, 94, 0.7);
-    box-shadow: inset 0 0 20px rgba(34, 197, 94, 0.12);
+    /* box-shadow simplified for performance */
 }
 
 /* Stronger highlight for active price range that's also forte */
@@ -1056,12 +1022,9 @@ td.col-asset {
 /* Dark theme adjustments - background handled by JS inline styles */
 @media (prefers-color-scheme: dark) {
     .is-forte-zone,
-    .is-forte-zone-long {
-        box-shadow: inset 0 0 25px rgba(34, 197, 94, 0.15);
-    }
-    
+    .is-forte-zone-long,
     .is-forte-zone-short {
-        box-shadow: inset 0 0 25px rgba(239, 68, 68, 0.15);
+        /* box-shadows removed for performance */
     }
 }
 
@@ -1070,7 +1033,7 @@ td.col-asset {
     position: fixed;
     pointer-events: none;
     z-index: 10000;
-    background: rgba(30, 41, 59, 0.95);
+    background: rgba(30, 41, 59, 0.98);
     border: 1px solid var(--accent);
     border-radius: var(--r-sm);
     padding: 8px 12px;
@@ -1079,8 +1042,7 @@ td.col-asset {
     color: var(--text);
     white-space: nowrap;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    /* backdrop-filter removed for performance */
     opacity: 0.5;
     transform: rotate(-2deg);
 }

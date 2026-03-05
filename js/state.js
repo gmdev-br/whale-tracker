@@ -39,7 +39,7 @@ let priceMode = 'realtime'; // 'realtime' or 'dailyclose'
 let priceTicker = null;
 let dailyCloseCache = {}; // { COIN: price }
 let currentPrices = {};   // coin -> mark price
-let priceUpdateInterval = 3000; // Default 3 seconds (configurable by user)
+let priceUpdateInterval = 5000; // Default 5 seconds (configurable by user) - increased for better performance
 let priceUpdateVersion = 0; // Incremented on every price update
 
 // Ranking state

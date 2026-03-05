@@ -6,11 +6,7 @@
 input[type="number"],
 input[type="text"],
 select {
-    background: linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.05) 0%,
-        rgba(255, 255, 255, 0.02) 100%
-    );
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--glass-border);
     color: var(--text);
     padding: 6px 10px;
@@ -18,17 +14,13 @@ select {
     font-size: 12px;
     font-family: inherit;
     width: 130px;
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* backdrop-filter removed for performance */
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
     -webkit-appearance: none;
     appearance: none;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
     min-height: 44px;
     box-sizing: border-box;
-    will-change: transform, border-color, box-shadow;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+    box-shadow: none;
 }
 
 /* Mobile inputs */
@@ -78,15 +70,8 @@ select:focus-visible {
     outline: 2px solid rgba(139, 158, 255, 0.6);
     outline-offset: -2px;
     border-color: rgba(139, 158, 255, 0.5);
-    box-shadow: 
-        0 0 0 4px rgba(139, 158, 255, 0.15),
-        0 0 20px rgba(139, 158, 255, 0.2),
-        0 1px 0 rgba(255, 255, 255, 0.05) inset;
-    background: linear-gradient(
-        135deg,
-        rgba(139, 158, 255, 0.1) 0%,
-        rgba(139, 158, 255, 0.05) 100%
-    );
+    box-shadow: 0 0 0 3px rgba(139, 158, 255, 0.1);
+    background: rgba(139, 158, 255, 0.08);
 }
 
 /* Hide native number spinners for consistent theme */
@@ -153,19 +138,15 @@ select option {
     border: 1px solid rgba(139, 158, 255, 0.2);
     border-top: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--r-md);
-    box-shadow: 
-        0 16px 48px rgba(0, 0, 0, 0.5),
-        0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-        0 0 30px rgba(139, 158, 255, 0.1);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    /* backdrop-filter removed for performance */
     z-index: 200;
     max-height: 220px;
     overflow-y: auto;
     display: none;
     padding: 6px;
-    animation: dropIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: opacity, transform;
+    animation: dropIn 0.2s ease;
+    /* will-change removed for performance */
 }
 
 .combobox-dropdown::before {
@@ -581,8 +562,7 @@ input[type="color"]:focus {
     );
     border: 1px solid rgba(139, 158, 255, 0.15);
     border-radius: var(--r-sm);
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
+    /* backdrop-filter removed for performance */
     transition: all 0.2s ease;
 }
 
@@ -608,8 +588,7 @@ input[type="color"]:focus {
     );
     border: 1px solid rgba(139, 158, 255, 0.12);
     border-radius: var(--r-md);
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
+    /* backdrop-filter removed for performance */
 }
 
 .color-picker-group-title {

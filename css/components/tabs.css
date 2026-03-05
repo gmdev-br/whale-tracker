@@ -5,17 +5,12 @@
 .tabs {
     display: flex;
     gap: 3px;
-    background: linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.04) 0%,
-        rgba(255, 255, 255, 0.02) 100%
-    );
+    background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--glass-border);
     border-radius: var(--r-sm);
     padding: 3px;
-    backdrop-filter: var(--glass-blur-sm);
-    -webkit-backdrop-filter: var(--glass-blur-sm);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset;
+    /* backdrop-filter removed for performance */
+    box-shadow: none;
 }
 
 .tab {
@@ -28,28 +23,16 @@
     background: transparent;
     font-family: inherit;
     font-weight: 500;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
+    transition: background 0.2s ease, color 0.2s ease;
     -webkit-tap-highlight-color: transparent;
     min-height: 44px;
     min-width: 44px;
     position: relative;
     overflow: hidden;
-    will-change: transform, background-color;
+    /* will-change removed for performance */
 }
 
-.tab::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: var(--glass-shimmer);
-    transition: left 0.6s ease;
-    pointer-events: none;
-}
+/* .tab::before removed for performance */
 
 .tab:hover::before {
     left: 100%;
