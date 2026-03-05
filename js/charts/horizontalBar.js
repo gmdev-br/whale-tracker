@@ -16,27 +16,46 @@ let horizontalBarChart = null;
 let lastDataHash = null;
 
 // ═══════════════════════════════════════════════════════════
-// ZOOM STATE MANAGEMENT
+// ZOOM STATE MANAGEMENT - INFINITE ZOOM
 // ═══════════════════════════════════════════════════════════
 
 const ZOOM_CONFIG = {
-    MIN_BARS: 1,        // Maximum zoom - pode ver apenas 1 barra
-    MAX_BARS: Infinity, // Minimum zoom - pode ver TODAS as barras
-    DEFAULT_BARS: 20,   // Default view
-    STEP_BARS: 3,       // Bars changed per zoom step
-    ANIMATION_DURATION: 300  // Smooth transition duration
+    MIN_BARS: 1,            // Maximum zoom - pode ver apenas 1 barra
+    MAX_BARS: Infinity,     // Minimum zoom - pode ver TODAS as barras
+    DEFAULT_BARS: 20,       // Default view
+    STEP_BARS: 3,           // Bars changed per button click
+    ANIMATION_DURATION: 250, // Smooth transition duration
+    WHEEL_SENSITIVITY: 0.15, // Sensitivity for smooth wheel zoom (0-1)
+    WHEEL_DEBOUNCE: 16,     // ms - roughly 60fps for smooth zoom
+    PINCH_SENSITIVITY: 1.5, // Sensitivity for pinch zoom
+    DOUBLE_CLICK_ZOOM: 0.5  // Zoom factor for double-click (0.5 = half the bars)
 };
 
 // Current zoom state - preserved during data updates
 let currentZoomState = {
     visibleBars: ZOOM_CONFIG.DEFAULT_BARS,
-    centerIndex: null,  // null = centered on BTC price
-    isUserZoom: false   // true if user manually zoomed
+    centerIndex: null,      // null = centered on BTC price
+    isUserZoom: false,      // true if user manually zoomed
+    isAnimating: false      // prevents zoom conflicts during animation
 };
 
 // Mouse wheel zoom state
 let isCtrlPressed = false;
 let wheelDebounceTimer = null;
+let lastWheelTime = 0;
+
+// Touch/pinch state
+let touchState = {
+    isPinching: false,
+    initialDistance: 0,
+    initialZoomBars: 20,
+    lastTouchTime: 0,
+    lastTapTime: 0,
+    tapCount: 0
+};
+
+// Smooth zoom accumulator for wheel events
+let wheelZoomAccumulator = 0;
 
 /**
  * Formata valores em formato compacto (K, M, B)
@@ -539,7 +558,8 @@ export function destroyHorizontalBarChart() {
     currentZoomState = {
         visibleBars: ZOOM_CONFIG.DEFAULT_BARS,
         centerIndex: null,
-        isUserZoom: false
+        isUserZoom: false,
+        isAnimating: false
     };
 }
 
@@ -556,12 +576,26 @@ export function updateHorizontalBarChart(force = false) {
 
 /**
  * Atualiza o indicador de nível de zoom na UI
+ * Mostra: barras visíveis / total + porcentagem de zoom
  */
 function updateZoomLevelIndicator() {
     const indicator = document.getElementById('hbZoomLevel');
     if (indicator) {
         const totalBars = getTotalBarsCount();
-        indicator.textContent = `${currentZoomState.visibleBars} / ${totalBars}`;
+        const visibleBars = currentZoomState.visibleBars;
+
+        // Calculate zoom percentage (100% = all bars visible, higher = zoomed in)
+        const zoomPercent = totalBars > 0 ? Math.round((totalBars / visibleBars) * 100) : 100;
+
+        // Format with visual indicator
+        let zoomIcon = '🔍';
+        if (zoomPercent >= 500) zoomIcon = '🔎'; // High zoom
+        else if (zoomPercent <= 105) zoomIcon = '📊'; // All data visible
+
+        indicator.textContent = `${visibleBars}/${totalBars} ${zoomIcon} ${zoomPercent}%`;
+
+        // Add tooltip with instructions
+        indicator.title = `Zoom: ${zoomPercent}%\n${visibleBars} de ${totalBars} faixas visíveis\n\nDicas:\n• Ctrl+Scroll: Zoom suave\n• Duplo-clique: Zoom na barra\n• Pinch: Zoom touch`;
     }
 }
 
@@ -692,6 +726,7 @@ function applyZoom(visibleBars, centerIndex = null) {
 
 /**
  * Aplica zoom no gráfico (aumentar - mostra menos barras)
+ * Usa smooth zoom para transição suave
  */
 export function zoomIn() {
     if (!horizontalBarChart) return;
@@ -711,26 +746,25 @@ export function zoomIn() {
 
     // Só aplica se realmente houver mudança
     if (newVisibleBars !== currentZoomState.visibleBars) {
-        applyZoom(newVisibleBars, currentZoomState.centerIndex);
+        applySmoothZoom(newVisibleBars, currentZoomState.centerIndex);
     }
 }
 
 /**
  * Aplica zoom no gráfico (diminuir - mostra mais barras)
+ * Usa smooth zoom para transição suave
  */
 export function zoomOut() {
-    console.log('[zoomOut] called, chart exists:', !!horizontalBarChart);
     if (!horizontalBarChart) return;
 
     syncZoomStateFromChart();
-    console.log('[zoomOut] after sync, visibleBars:', currentZoomState.visibleBars);
 
     // Zoom mínimo ilimitado: pode ver TODAS as barras
     const option = horizontalBarChart.getOption();
     const yAxisData = option.yAxis && option.yAxis[0] ? option.yAxis[0].data : [];
     const totalBands = yAxisData.length || 1;
 
-    // Se já estiver mostrando todas as barras, não faz nada (não scrolla)
+    // Se já estiver mostrando todas as barras, não faz nada
     if (currentZoomState.visibleBars >= totalBands) {
         return;
     }
@@ -742,12 +776,13 @@ export function zoomOut() {
 
     // Só aplica se realmente houver mudança no número de barras visíveis
     if (newVisibleBars !== currentZoomState.visibleBars) {
-        applyZoom(newVisibleBars, currentZoomState.centerIndex);
+        applySmoothZoom(newVisibleBars, currentZoomState.centerIndex);
     }
 }
 
 /**
  * Reseta o zoom para a visualização padrão (centrada no preço atual do BTC)
+ * Usa smooth zoom para transição suave
  */
 export function zoomReset() {
     if (!horizontalBarChart) return;
@@ -783,21 +818,17 @@ export function zoomReset() {
     const centerIdx = currentBandIndex >= 0 ? currentBandIndex : Math.floor(totalBands / 2);
     currentZoomState.centerIndex = centerIdx;
 
-    applyZoom(currentZoomState.visibleBars, centerIdx);
-
-    // Update UI indicator
-    updateZoomLevelIndicator();
+    applySmoothZoom(currentZoomState.visibleBars, centerIdx);
 }
 
 /**
  * Handler para evento de wheel no container do gráfico
- * Suporta Ctrl+Scroll para zoom e scroll normal para navegação
+ * Infinite smooth zoom com Ctrl+Scroll
  *
- * NOTA: O dataZoom 'inside' já está configurado para:
- * - zoomOnMouseWheel: 'ctrl' (só zooma com Ctrl)
- * - moveOnMouseWheel: true (scroll normal navega)
- *
- * Este handler complementa para garantir comportamento consistente.
+ * Características:
+ * - Zoom suave e contínuo (não por steps)
+ * - Acumulador de delta para precisão
+ * - 60fps de taxa de atualização
  */
 function handleChartWheel(e) {
     if (!horizontalBarChart) return;
@@ -808,43 +839,226 @@ function handleChartWheel(e) {
     const totalBands = yAxisData.length || 1;
 
     if (isZoomModifier) {
-        // Ctrl+Scroll: sempre dá zoom (nunca navega)
+        // Ctrl+Scroll: ZOOM INFINITO SUAVE
         e.preventDefault();
         e.stopPropagation();
 
-        // Se está tentando dar zoom out mas já mostra todas as barras, ignora
-        if (e.deltaY > 0 && currentZoomState.visibleBars >= totalBands) {
+        const now = performance.now();
+        const delta = e.deltaY;
+
+        // Accumulate wheel delta for smooth zoom
+        wheelZoomAccumulator += delta * ZOOM_CONFIG.WHEEL_SENSITIVITY;
+
+        // Check if enough time has passed (60fps = ~16ms)
+        if (now - lastWheelTime < ZOOM_CONFIG.WHEEL_DEBOUNCE) {
             return;
         }
+        lastWheelTime = now;
 
-        // Determine zoom direction
-        const delta = e.deltaY;
-        const zoomDirection = delta > 0 ? 'out' : 'in'; // Scroll down = zoom out, up = zoom in
+        // Calculate zoom change based on accumulated delta
+        const currentBars = currentZoomState.visibleBars;
+        let zoomFactor = 1 + (Math.abs(wheelZoomAccumulator) / 100);
 
-        // Debounce to avoid too many zoom calls
-        if (wheelDebounceTimer) {
-            clearTimeout(wheelDebounceTimer);
+        let newVisibleBars;
+        if (delta > 0) {
+            // Zoom out (show more bars) - multiply
+            newVisibleBars = Math.min(totalBands, Math.ceil(currentBars * zoomFactor));
+        } else {
+            // Zoom in (show fewer bars) - divide
+            newVisibleBars = Math.max(1, Math.floor(currentBars / zoomFactor));
         }
 
-        wheelDebounceTimer = setTimeout(() => {
-            if (zoomDirection === 'in') {
-                zoomIn();
-            } else {
-                zoomOut();
-            }
-        }, 50);
+        // Reset accumulator
+        wheelZoomAccumulator = 0;
+
+        // Only apply if there's a meaningful change
+        if (newVisibleBars !== currentBars) {
+            applySmoothZoom(newVisibleBars, currentZoomState.centerIndex);
+        }
     } else {
         // Scroll sem Ctrl: navegação (move)
-        // Quando todas as barras cabem na tela, o scroll não deve fazer nada
-        // ou deve scrollar a página, não o gráfico
+        // Quando todas as barras cabem na tela, deixa o scroll da página acontecer
         if (currentZoomState.visibleBars >= totalBands) {
-            // Todas as barras visíveis: deixa o scroll da página acontecer
-            // Não previne o default, não faz nada no gráfico
             return;
         }
-        // Quando há mais barras que cabem, o dataZoom 'inside' moveOnMouseWheel
-        // já cuida da navegação, então não precisamos fazer nada aqui
+        // O dataZoom 'inside' já cuida da navegação
     }
+}
+
+/**
+ * Aplica zoom suave com transição animada
+ * Versão otimizada para zoom contínuo (wheel/pinch)
+ */
+function applySmoothZoom(visibleBars, centerIndex = null) {
+    if (!horizontalBarChart || currentZoomState.isAnimating) return;
+
+    const option = horizontalBarChart.getOption();
+    const yAxisData = option.yAxis && option.yAxis[0] ? option.yAxis[0].data : [];
+    const totalBands = yAxisData.length || 1;
+
+    // Clamp values
+    let targetBars = Math.max(1, Math.min(totalBands, visibleBars));
+
+    // Determine center index
+    let centerIdx = centerIndex;
+    if (centerIdx === null || centerIdx === undefined) {
+        const dz = option.dataZoom?.[0];
+        if (dz && dz.startValue !== undefined && dz.endValue !== undefined) {
+            centerIdx = Math.floor((dz.startValue + dz.endValue) / 2);
+        } else {
+            centerIdx = Math.floor(totalBands / 2);
+        }
+    }
+
+    // Calculate range
+    const halfVisible = Math.floor(targetBars / 2);
+    let startIndex = Math.max(0, centerIdx - halfVisible);
+    let endIndex = Math.min(totalBands - 1, startIndex + targetBars - 1);
+
+    // Adjust if near boundaries
+    if (endIndex - startIndex + 1 < targetBars) {
+        startIndex = Math.max(0, endIndex - targetBars + 1);
+    }
+
+    // Update state
+    currentZoomState.visibleBars = targetBars;
+    currentZoomState.centerIndex = centerIdx;
+    currentZoomState.isUserZoom = true;
+
+    // Update UI
+    updateZoomLevelIndicator();
+
+    // Apply zoom with animation
+    currentZoomState.isAnimating = true;
+    horizontalBarChart.dispatchAction({
+        type: 'dataZoom',
+        startValue: startIndex,
+        endValue: endIndex,
+        animation: {
+            duration: ZOOM_CONFIG.ANIMATION_DURATION,
+            easing: 'cubicOut'
+        }
+    });
+
+    // Reset animation flag
+    setTimeout(() => {
+        currentZoomState.isAnimating = false;
+    }, ZOOM_CONFIG.ANIMATION_DURATION);
+}
+
+/**
+ * Handler para double-click no gráfico
+ * Zoom in na posição clicada
+ */
+function handleChartDoubleClick(e) {
+    if (!horizontalBarChart) return;
+
+    const chartDom = document.getElementById('horizontalBarChart');
+    if (!chartDom) return;
+
+    const rect = chartDom.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+
+    const option = horizontalBarChart.getOption();
+    const yAxisData = option.yAxis?.[0]?.data || [];
+    const totalBands = yAxisData.length || 1;
+
+    // Convert Y position to data index
+    const grid = option.grid?.[0] || { top: 50, bottom: 40 };
+    const chartHeight = rect.height - grid.top - grid.bottom;
+    const relativeY = y - grid.top;
+
+    // Calculate which bar was clicked (approximate)
+    const currentRange = currentZoomState.visibleBars;
+    const dz = option.dataZoom?.[0];
+    let startVal = dz?.startValue || 0;
+    let endVal = dz?.endValue || (totalBands - 1);
+
+    const barHeight = chartHeight / (endVal - startVal + 1);
+    const clickedBarOffset = Math.floor(relativeY / barHeight);
+    const clickedIndex = startVal + clickedBarOffset;
+
+    if (clickedIndex >= 0 && clickedIndex < totalBands) {
+        // Zoom in centered on clicked bar
+        const newVisibleBars = Math.max(1, Math.floor(currentRange * ZOOM_CONFIG.DOUBLE_CLICK_ZOOM));
+        applySmoothZoom(newVisibleBars, clickedIndex);
+    }
+}
+
+/**
+ * Handler para eventos touch (pinch-to-zoom)
+ */
+function handleTouchStart(e) {
+    if (e.touches.length === 2) {
+        // Start pinch
+        touchState.isPinching = true;
+        touchState.initialDistance = getTouchDistance(e.touches);
+        touchState.initialZoomBars = currentZoomState.visibleBars;
+        e.preventDefault();
+    }
+
+    // Handle double-tap detection
+    const now = Date.now();
+    const timeSinceLastTap = now - touchState.lastTapTime;
+
+    if (timeSinceLastTap < 300) {
+        touchState.tapCount++;
+        if (touchState.tapCount === 2) {
+            // Double-tap: zoom in at tap location
+            const touch = e.touches[0];
+            const simulatedEvent = { clientX: touch.clientX, clientY: touch.clientY };
+            handleChartDoubleClick(simulatedEvent);
+            touchState.tapCount = 0;
+        }
+    } else {
+        touchState.tapCount = 1;
+    }
+    touchState.lastTapTime = now;
+}
+
+function handleTouchMove(e) {
+    if (touchState.isPinching && e.touches.length === 2) {
+        e.preventDefault();
+
+        const currentDistance = getTouchDistance(e.touches);
+        const scale = currentDistance / touchState.initialDistance;
+
+        // Apply pinch zoom
+        const option = horizontalBarChart.getOption();
+        const yAxisData = option.yAxis?.[0]?.data || [];
+        const totalBands = yAxisData.length || 1;
+
+        // Calculate new visible bars based on pinch scale
+        let newVisibleBars;
+        if (scale > 1) {
+            // Pinch out = zoom out (more bars)
+            newVisibleBars = Math.min(totalBands, Math.ceil(touchState.initialZoomBars * scale * ZOOM_CONFIG.PINCH_SENSITIVITY));
+        } else {
+            // Pinch in = zoom in (fewer bars)
+            newVisibleBars = Math.max(1, Math.floor(touchState.initialZoomBars * scale / ZOOM_CONFIG.PINCH_SENSITIVITY));
+        }
+
+        // Debounce for performance
+        if (!currentZoomState.isAnimating && newVisibleBars !== currentZoomState.visibleBars) {
+            applySmoothZoom(newVisibleBars, currentZoomState.centerIndex);
+        }
+    }
+}
+
+function handleTouchEnd(e) {
+    if (touchState.isPinching) {
+        touchState.isPinching = false;
+        touchState.initialDistance = 0;
+    }
+}
+
+/**
+ * Calcula distância entre dois toques
+ */
+function getTouchDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
 }
 
 /**
@@ -864,6 +1078,7 @@ function handleKeyUp(e) {
 
 /**
  * Inicializa os event listeners dos controles de zoom
+ * Suporta: botões, mouse wheel (Ctrl+scroll), double-click, pinch-to-zoom
  */
 export function initZoomControls() {
     const zoomInBtn = document.getElementById('hbZoomIn');
@@ -887,9 +1102,15 @@ export function initZoomControls() {
         console.log('[initZoomControls] zoomReset listener attached');
     }
 
-    // Mouse wheel zoom on chart container
+    // Mouse wheel zoom on chart container (smooth infinite zoom)
     if (chartDom) {
         chartDom.addEventListener('wheel', handleChartWheel, { passive: false });
+        // Double-click to zoom
+        chartDom.addEventListener('dblclick', handleChartDoubleClick);
+        // Touch events for pinch-to-zoom
+        chartDom.addEventListener('touchstart', handleTouchStart, { passive: false });
+        chartDom.addEventListener('touchmove', handleTouchMove, { passive: false });
+        chartDom.addEventListener('touchend', handleTouchEnd);
     }
 
     // Keyboard listeners for Ctrl key tracking
@@ -925,6 +1146,10 @@ export function destroyZoomControls() {
     }
     if (chartDom) {
         chartDom.removeEventListener('wheel', handleChartWheel);
+        chartDom.removeEventListener('dblclick', handleChartDoubleClick);
+        chartDom.removeEventListener('touchstart', handleTouchStart);
+        chartDom.removeEventListener('touchmove', handleTouchMove);
+        chartDom.removeEventListener('touchend', handleTouchEnd);
     }
 
     document.removeEventListener('keydown', handleKeyDown);
